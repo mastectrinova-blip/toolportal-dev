@@ -353,10 +353,6 @@ function Login({ onLogin }) {
               Streamline your network operations with one connected workspace for tools, audits, and team access.
             </p>
           </div>
-
-          <p className="mono" style={{ fontSize: 12, color: "var(--slate-400)", margin: 0 }}>
-            © 2026 ToolPortal. All rights reserved.
-          </p>
         </div>
       </div>
 
@@ -809,13 +805,6 @@ function ToolFrame({ tool, onBack }) {
           flexShrink: 0,
         }}
       >
-        <button onClick={onBack} className="btn btn-ghost" style={{ padding: "7px 14px", fontSize: 13 }}>
-          <span className="msym" style={{ fontSize: 17 }}>arrow_back</span>
-          Back to Dashboard
-        </button>
-        <span style={{ fontSize: 13.5, color: "var(--slate-400)", fontWeight: 500 }}>
-          ToolPortal &nbsp;/&nbsp; <strong style={{ color: "var(--navy-900)" }}>{tool.name}</strong>
-        </span>
       </div>
       <iframe
         title={tool.name}
