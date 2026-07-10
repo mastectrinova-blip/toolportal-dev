@@ -1,0 +1,2292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MasTec Delta Tool</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{--bg:#f0f6ff;--surface:#ffffff;--sidebar:#1a2744;--border:#d0e0f5;--accent:#2563eb;--accent-light:#dbeafe;--green:#16a34a;--green-light:#dcfce7;--red:#dc2626;--red-light:#fee2e2;--amber:#d97706;--amber-light:#fef3c7;--text:#1e293b;--text2:#475569;--muted:#94a3b8;--font:'Inter',sans-serif;--mono:'JetBrains Mono',monospace;--shadow:0 1px 3px rgba(0,0,0,0.08),0 4px 16px rgba(37,99,235,0.06);--shadow-lg:0 4px 24px rgba(37,99,235,0.12);}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;}
+.page{display:none;min-height:100vh;}
+.page.active{display:flex;}
+/* LOGIN */
+#loginPage{align-items:center;justify-content:center;background:linear-gradient(135deg,#1a2744 0%,#2563eb 100%);padding:20px;}
+.login-box{background:#fff;border-radius:20px;padding:48px 40px;width:100%;max-width:420px;box-shadow:0 20px 60px rgba(0,0,0,0.2);}
+.brand{text-align:center;margin-bottom:36px;}
+.brand-icon{width:60px;height:60px;border-radius:16px;background:linear-gradient(135deg,#2563eb,#1d4ed8);display:flex;align-items:center;justify-content:center;font-size:26px;margin:0 auto 16px;font-weight:800;color:#fff;box-shadow:0 8px 20px rgba(37,99,235,0.3);}
+.form-group{margin-bottom:16px;}
+.form-group label{display:block;font-size:12px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:8px;}
+.form-group input{width:100%;padding:12px 16px;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;outline:none;transition:all 0.2s;font-family:var(--font);}
+.form-group input:focus{border-color:var(--accent);background:#fff;box-shadow:0 0 0 3px rgba(37,99,235,0.1);}
+.login-btn{width:100%;padding:13px;margin-top:8px;background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;transition:all 0.2s;font-family:var(--font);box-shadow:0 4px 12px rgba(37,99,235,0.3);}
+.login-btn:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(37,99,235,0.4);}
+.login-btn:disabled{opacity:0.6;cursor:not-allowed;transform:none;}
+.login-msg{font-size:13px;text-align:center;margin-top:14px;min-height:20px;}
+.login-msg.err{color:var(--red);}
+.login-footer{text-align:center;margin-top:20px;font-size:12px;color:var(--muted);}
+/* APP */
+#appPage{flex-direction:row;}
+.sidebar{width:240px;min-height:100vh;background:var(--sidebar);display:flex;flex-direction:column;padding:0;flex-shrink:0;position:fixed;top:0;left:0;height:100vh;z-index:100;overflow-y:auto;}
+.sidebar-brand{padding:24px 20px 20px;border-bottom:1px solid rgba(255,255,255,0.08);}
+.sidebar-logo{display:flex;align-items:center;gap:10px;}
+.sidebar-logo-icon{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#2563eb,#60a5fa);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;color:#fff;}
+.sidebar-logo-text{font-size:16px;font-weight:700;color:#fff;letter-spacing:-0.3px;}
+.sidebar-logo-text span{color:#60a5fa;}
+.sidebar-nav{flex:1;padding:16px 12px;overflow-y:auto;}
+.nav-section-title{font-size:10px;font-weight:600;color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:1px;padding:0 8px;margin:16px 0 6px;}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;color:rgba(255,255,255,0.6);transition:all 0.15s;margin-bottom:2px;}
+.nav-item:hover{background:rgba(255,255,255,0.08);color:#fff;}
+.nav-item.active{background:rgba(37,99,235,0.4);color:#fff;}
+.nav-item.sub{padding-left:28px;font-size:12px;}
+.sidebar-footer{padding:16px;border-top:1px solid rgba(255,255,255,0.08);}
+.user-card{display:flex;align-items:center;gap:10px;margin-bottom:12px;}
+.user-avatar{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#2563eb,#60a5fa);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;flex-shrink:0;}
+.user-name{font-size:12px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.user-role{font-size:10px;color:rgba(255,255,255,0.4);}
+.logout-btn{width:100%;padding:8px;background:transparent;border:1px solid rgba(255,255,255,0.15);border-radius:8px;color:rgba(255,255,255,0.5);font-size:12px;cursor:pointer;transition:all 0.15s;font-family:var(--font);}
+.logout-btn:hover{border-color:rgba(220,38,38,0.5);color:#f87171;}
+.main-content{flex:1;margin-left:240px;min-height:100vh;}
+.topbar{background:#fff;border-bottom:1px solid var(--border);padding:0 32px;height:60px;display:flex;align-items:center;position:sticky;top:0;z-index:50;box-shadow:0 1px 3px rgba(0,0,0,0.05);}
+.topbar-breadcrumb{font-size:13px;color:var(--muted);}
+.panel{display:none;padding:32px;}
+.panel.active{display:block;}
+.home-welcome{margin-bottom:32px;}
+.home-welcome h2{font-size:26px;font-weight:800;color:var(--text);letter-spacing:-0.5px;margin-bottom:6px;}
+.home-welcome p{font-size:14px;color:var(--text2);}
+.tool-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;}
+.tool-card{background:#fff;border:1.5px solid var(--border);border-radius:16px;padding:28px 24px;cursor:pointer;transition:all 0.2s;box-shadow:var(--shadow);position:relative;overflow:hidden;}
+.tool-card::before{content:'';position:absolute;top:0;left:0;right:0;height:4px;}
+.tool-card.blue::before{background:linear-gradient(90deg,#2563eb,#60a5fa);}
+.tool-card.green::before{background:linear-gradient(90deg,#16a34a,#4ade80);}
+.tool-card.purple::before{background:linear-gradient(90deg,#7c3aed,#a78bfa);}
+.tool-card:hover{transform:translateY(-3px);box-shadow:var(--shadow-lg);border-color:var(--accent);}
+.tool-card-icon{width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;margin-bottom:16px;}
+.tool-card.blue .tool-card-icon{background:var(--accent-light);}
+.tool-card.green .tool-card-icon{background:var(--green-light);}
+.tool-card.purple .tool-card-icon{background:#ede9fe;}
+.tool-card-name{font-size:16px;font-weight:700;color:var(--text);margin-bottom:16px;}
+.tool-card-arrow{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:600;}
+.tool-card.blue .tool-card-arrow{color:var(--accent);}
+.tool-card.green .tool-card-arrow{color:var(--green);}
+.tool-card.purple .tool-card-arrow{color:#7c3aed;}
+.sub-menu-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:8px;}
+.sub-menu-card{background:#fff;border:1.5px solid var(--border);border-radius:16px;padding:28px 24px;cursor:pointer;transition:all 0.2s;box-shadow:var(--shadow);position:relative;overflow:hidden;}
+.sub-menu-card::before{content:'';position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,#2563eb,#60a5fa);}
+.sub-menu-card:hover{transform:translateY(-3px);box-shadow:var(--shadow-lg);border-color:var(--accent);}
+.sub-menu-card-icon{width:48px;height:48px;border-radius:12px;background:var(--accent-light);display:flex;align-items:center;justify-content:center;font-size:22px;margin-bottom:16px;}
+.sub-menu-card-name{font-size:16px;font-weight:700;color:var(--text);margin-bottom:16px;}
+.sub-menu-card-arrow{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:600;color:var(--accent);}
+.coming-soon{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:400px;text-align:center;}
+.coming-soon-icon{font-size:64px;margin-bottom:20px;}
+.coming-soon h3{font-size:22px;font-weight:700;color:var(--text);margin-bottom:8px;}
+.coming-soon p{font-size:14px;color:var(--muted);}
+/* Generator */
+.gen-section{margin-bottom:20px;}
+.section-card{background:#fff;border:1.5px solid var(--border);border-radius:14px;padding:24px;box-shadow:var(--shadow);}
+.section-title{font-size:13px;font-weight:700;color:var(--text);margin-bottom:16px;display:flex;align-items:center;gap:8px;text-transform:uppercase;letter-spacing:0.5px;}
+.step-badge{width:22px;height:22px;border-radius:50%;background:var(--accent);color:#fff;font-size:11px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;}
+.upload-zone{border:2px dashed var(--border);border-radius:10px;padding:36px;text-align:center;cursor:pointer;transition:all 0.2s;position:relative;background:var(--bg);}
+.upload-zone:hover,.upload-zone.dragover{border-color:var(--accent);background:var(--accent-light);}
+.upload-zone.has-file{border-color:var(--green);background:var(--green-light);border-style:solid;}
+.upload-zone input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
+.upload-icon{font-size:32px;margin-bottom:10px;}
+.upload-zone p{font-size:13px;color:var(--text2);margin-bottom:3px;}
+.upload-zone p strong{color:var(--accent);}
+.file-badge{display:none;margin-top:8px;padding:4px 12px;background:var(--green-light);border:1px solid #86efac;border-radius:20px;font-size:12px;color:var(--green);font-family:var(--mono);}
+.script-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.script-card{border:1.5px solid var(--border);border-radius:10px;padding:16px;cursor:pointer;transition:all 0.2s;background:var(--bg);}
+.script-card:hover{border-color:var(--accent);background:var(--accent-light);}
+.script-card.selected{border-color:var(--accent);background:var(--accent-light);}
+.sc-header{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+.sc-check{width:18px;height:18px;border:2px solid var(--border);border-radius:4px;display:flex;align-items:center;justify-content:center;transition:all 0.15s;flex-shrink:0;background:#fff;}
+.script-card.selected .sc-check{background:var(--accent);border-color:var(--accent);}
+.script-card.selected .sc-check::after{content:'\2713';color:#fff;font-size:11px;font-weight:800;}
+.sc-name{font-size:14px;font-weight:700;color:var(--text);}
+.fga-gen-opts{margin-top:12px;padding-top:12px;border-top:1px solid var(--border);display:none;}
+.script-card.selected .fga-gen-opts{display:block;}
+.gen-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;font-weight:600;}
+.gen-btns{display:flex;gap:6px;}
+.gen-btn{flex:1;padding:6px;border:1.5px solid var(--border);border-radius:6px;background:#fff;color:var(--text2);font-size:11px;font-weight:600;cursor:pointer;transition:all 0.15s;font-family:var(--font);}
+.gen-btn:hover{border-color:var(--accent);color:var(--accent);}
+.gen-btn.active{border-color:var(--accent);background:var(--accent);color:#fff;}
+.gen-btn-main{width:100%;padding:14px;background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;transition:all 0.2s;display:flex;align-items:center;justify-content:center;gap:10px;font-family:var(--font);box-shadow:0 4px 12px rgba(37,99,235,0.3);margin-top:4px;}
+.gen-btn-main:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 6px 20px rgba(37,99,235,0.4);}
+.gen-btn-main:disabled{opacity:0.5;cursor:not-allowed;transform:none;box-shadow:none;}
+.spinner{width:16px;height:16px;border:2px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin 0.7s linear infinite;display:none;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.status-box{background:var(--bg);border:1.5px solid var(--border);border-radius:10px;padding:16px;margin-top:16px;display:none;}
+.status-box.visible{display:block;}
+.log-line{font-family:var(--mono);font-size:12px;padding:3px 0;display:flex;gap:8px;border-bottom:1px solid var(--border);}
+.log-line:last-child{border-bottom:none;}
+.log-ok{color:var(--green);}.log-info{color:var(--accent);}.log-warn{color:var(--amber);}.log-err{color:var(--red);}
+.summary-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px;}
+.sum-item{background:#fff;border:1px solid var(--border);border-radius:8px;padding:10px 12px;}
+.sum-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:3px;font-weight:600;}
+.sum-val{font-size:13px;font-weight:700;color:var(--text);}
+.dl-section{margin-top:14px;display:flex;flex-direction:column;gap:8px;}
+.dl-btn{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--green-light);border:1px solid #86efac;border-radius:8px;color:var(--green);text-decoration:none;font-size:13px;font-weight:600;transition:all 0.15s;}
+.dl-btn:hover{background:#bbf7d0;}
+.dl-btn span{font-size:11px;opacity:0.7;font-family:var(--mono);}
+/* GL Audit */
+.gl-status{margin-top:16px;font-size:13px;color:var(--text2);font-family:var(--mono);display:none;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;padding:16px;}
+/* Admin */
+.admin-table{width:100%;border-collapse:collapse;font-size:13px;}
+.admin-table th{text-align:left;padding:10px 12px;font-size:11px;text-transform:uppercase;letter-spacing:0.8px;color:var(--muted);border-bottom:1.5px solid var(--border);font-weight:600;}
+.admin-table td{padding:12px;border-bottom:1px solid var(--border);color:var(--text);}
+.admin-table tr:hover td{background:var(--bg);}
+.status-badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;}
+.badge-active{background:var(--green-light);color:var(--green);}
+.badge-pending{background:var(--amber-light);color:var(--amber);}
+.add-user-form{display:flex;gap:10px;margin-bottom:16px;}
+.add-user-form input{flex:1;padding:10px 14px;background:var(--bg);border:1.5px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;outline:none;transition:all 0.2s;}
+.add-user-form input:focus{border-color:var(--accent);background:#fff;}
+.add-user-btn{padding:10px 18px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font);white-space:nowrap;}
+.remove-btn{padding:4px 10px;background:transparent;border:1px solid var(--border);border-radius:4px;color:var(--muted);font-size:11px;cursor:pointer;transition:all 0.15s;}
+.remove-btn:hover{border-color:var(--red);color:var(--red);background:var(--red-light);}
+.admin-msg{font-size:12px;margin-top:8px;min-height:16px;}
+.admin-msg.ok{color:var(--green);}.admin-msg.err{color:var(--red);}
+.lu-mode-btn{padding:10px 20px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:1.5px solid var(--border);background:var(--bg);color:var(--text2);font-family:var(--font);transition:all 0.15s;}
+.lu-mode-btn:hover{border-color:var(--accent);color:var(--accent);}
+.active-sd{background:#fef3c7!important;border-color:#d97706!important;color:#92400e!important;}
+.active-ul{background:var(--green-light)!important;border-color:var(--green)!important;color:#14532d!important;}
+.active-lk{background:var(--red-light)!important;border-color:var(--red)!important;color:#7f1d1d!important;}
+.lu-filter-btn{padding:8px 16px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;border:1.5px solid var(--border);background:var(--bg);color:var(--text2);font-family:var(--font);transition:all 0.15s;}
+.lu-filter-btn:hover{border-color:var(--accent);color:var(--accent);}
+.active-filter{background:var(--accent-light)!important;border-color:var(--accent)!important;color:var(--accent)!important;}
+</style>
+</head>
+<body>
+
+<!-- APP -->
+<div class="page active" id="appPage">
+  <div class="sidebar">
+    <div class="sidebar-brand">
+      <div class="sidebar-logo">
+        <div class="sidebar-logo-icon">&#916;</div>
+        <div class="sidebar-logo-text">Delta <span>Tool</span></div>
+      </div>
+    </div>
+    <div class="sidebar-nav">
+      <div class="nav-section-title">Audit Tool</div>
+      <div class="nav-item active" id="nav-audit" onclick="showPanel('audit')">&#128269; Audit Tool</div>
+      <div class="nav-item sub" id="nav-generator" onclick="showPanel('generator')">&#9889; Delta Scripts</div>
+      <div class="nav-item sub" id="nav-glaudit" onclick="showPanel('glaudit')">&#128203; GL Audit</div>
+      <div class="nav-item sub" id="nav-lockunlock" onclick="showPanel('lockunlock')">&#128274; Lock / Unlock</div>
+      <div class="nav-item sub" id="nav-manualcmd" onclick="showPanel('manualcmd')">&#128221; Manual Cmd</div>
+    </div>
+    <div class="sidebar-footer">
+    </div>
+  </div>
+
+  <div class="main-content">
+    <div class="topbar">
+      <button onclick="trinovaBackToPortal()" style="display:flex;align-items:center;gap:6px;background:none;border:1px solid #e2e8f0;border-radius:8px;padding:7px 14px;font-size:13px;font-weight:600;color:#475569;cursor:pointer;margin-right:18px;transition:all 0.15s ease;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='none'">
+        &#8592; Back to ToolPortal
+      </button>
+      <div class="topbar-breadcrumb" id="breadcrumb">Audit Tool</div>
+    </div>
+
+    <!-- AUDIT -->
+    <div class="panel active" id="panel-audit">
+      <div class="home-welcome"><h2>&#128269; Audit Tool</h2><p>Select a module to continue</p></div>
+      <div class="sub-menu-grid" style="grid-template-columns:1fr 1fr 1fr 1fr;">
+        <div class="sub-menu-card" onclick="showPanel('generator')">
+          <div class="sub-menu-card-icon">&#9889;</div>
+          <div class="sub-menu-card-name">Delta Scripts</div>
+          <div class="sub-menu-card-arrow">Open &#8594;</div>
+        </div>
+        <div class="sub-menu-card" onclick="showPanel('glaudit')">
+          <div class="sub-menu-card-icon">&#128203;</div>
+          <div class="sub-menu-card-name">GL Audit</div>
+          <div class="sub-menu-card-arrow">Open &#8594;</div>
+        </div>
+        <div class="sub-menu-card" onclick="showPanel('lockunlock')">
+          <div class="sub-menu-card-icon">&#128274;</div>
+          <div class="sub-menu-card-name">Lock / Unlock</div>
+          <div class="sub-menu-card-arrow">Open &#8594;</div>
+        </div>
+        <div class="sub-menu-card" onclick="showPanel('manualcmd')">
+          <div class="sub-menu-card-icon">&#128221;</div>
+          <div class="sub-menu-card-name">Manual Cmd</div>
+          <div class="sub-menu-card-arrow">Open &#8594;</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DELTA SCRIPTS GENERATOR -->
+    <div class="panel" id="panel-generator" style="max-width:800px">
+      <div class="gen-section">
+        <div class="section-card">
+          <div class="section-title"><span class="step-badge">1</span> Upload CIQ (Excel)</div>
+          <div class="upload-zone" id="ciqZone">
+            <input type="file" id="ciqFile" accept=".xlsx,.xls" />
+            <div class="upload-icon">&#128202;</div>
+            <p><strong>Click to upload</strong> or drag &amp; drop</p>
+            <div class="file-badge" id="ciqBadge"></div>
+          </div>
+        </div>
+      </div>
+      <div class="gen-section">
+        <div class="section-card">
+          <div class="section-title"><span class="step-badge">2</span> Select Scripts</div>
+          <div class="script-grid" style="grid-template-columns:1fr 1fr 1fr;">
+            <div class="script-card" id="opt-nds" onclick="toggleScript('nds')">
+              <div class="sc-header">
+                <div class="sc-check" id="cb-nds"></div>
+                <span class="sc-name">NDS Delta</span>
+              </div>
+            </div>
+            <div class="script-card" id="opt-fga" onclick="toggleScript('fga')">
+              <div class="sc-header">
+                <div class="sc-check" id="cb-fga"></div>
+                <span class="sc-name">FGA Delta</span>
+              </div>
+              <div class="fga-gen-opts">
+                <div class="gen-label">Generation (auto-detected)</div>
+                <div class="gen-btns">
+                  <button class="gen-btn active" id="fga-auto" onclick="setGen(event,'auto')">Auto</button>
+                  <button class="gen-btn" id="fga-g2" onclick="setGen(event,'G2')">G2</button>
+                  <button class="gen-btn" id="fga-g3g4" onclick="setGen(event,'G3G4')">G3 / G4</button>
+                </div>
+              </div>
+            </div>
+            <div class="script-card" id="opt-v3" onclick="toggleScript('v3')">
+              <div class="sc-header">
+                <div class="sc-check" id="cb-v3"></div>
+                <span class="sc-name">NDS Delta V3</span>
+              </div>
+            </div>
+            <div class="script-card" id="opt-v4" onclick="toggleScript('v4')">
+              <div class="sc-header">
+                <div class="sc-check" id="cb-v4"></div>
+                <span class="sc-name">NDS Delta V4</span>
+              </div>
+            </div>
+            <div class="script-card" id="opt-v5" onclick="toggleScript('v5')">
+              <div class="sc-header">
+                <div class="sc-check" id="cb-v5"></div>
+                <span class="sc-name">NDS Delta V5</span>
+              </div>
+            </div>
+            <div class="script-card" id="opt-v6" onclick="toggleScript('v6')">
+              <div class="sc-header">
+                <div class="sc-check" id="cb-v6"></div>
+                <span class="sc-name">NDS Delta V6</span>
+              </div>
+            </div>
+            <div class="script-card" id="opt-v7" onclick="toggleScript('v7')">
+              <div class="sc-header">
+                <div class="sc-check" id="cb-v7"></div>
+                <span class="sc-name">NDS Delta V7</span>
+              </div>
+            </div>
+            <div class="script-card" id="opt-v8" onclick="toggleScript('v8')">
+              <div class="sc-header">
+                <div class="sc-check" id="cb-v8"></div>
+                <span class="sc-name">NDS Delta V8</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="gen-section">
+        <div class="section-card">
+          <div class="section-title"><span class="step-badge">3</span> Save Location (Folder)</div>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <input type="text" id="folderPath" readonly placeholder="No folder selected" style="flex:1;padding:10px 14px;background:var(--bg);border:1.5px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;font-family:var(--mono);outline:none;" />
+            <button onclick="pickFolder()" style="padding:10px 18px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;font-family:var(--font);">&#128193; Browse</button>
+          </div>
+          <p style="font-size:11px;color:var(--muted);margin-top:6px;">Select a folder where the generated scripts will be saved.</p>
+        </div>
+      </div>
+      <button class="gen-btn-main" id="genBtn" onclick="generate()">
+        <div class="spinner" id="spinner"></div>
+        <span id="genBtnTxt">&#9889; Generate Scripts</span>
+      </button>
+      <div id="dlSection" style="margin-top:16px;display:flex;flex-direction:column;gap:8px;"></div>
+    </div>
+
+    <!-- GL AUDIT -->
+    <div class="panel" id="panel-glaudit" style="max-width:800px">
+      <div class="home-welcome"><h2>&#128203; GL Audit</h2><p>Parameter Search Tool</p></div>
+      <div class="gen-section">
+        <div class="section-card">
+          <div class="section-title"><span class="step-badge">1</span> Upload Excel File (Discrepancies sheet)</div>
+          <div class="upload-zone" id="glZone">
+            <input type="file" id="glFile" accept=".xlsx,.xlsm,.xls" />
+            <div class="upload-icon">&#128194;</div>
+            <p><strong>Click to upload</strong> or drag &amp; drop</p>
+            <div class="file-badge" id="glBadge"></div>
+          </div>
+        </div>
+      </div>
+      <div class="gen-section">
+        <div class="section-card">
+          <div class="section-title" style="cursor:pointer;justify-content:space-between" onclick="toggleGLParams()">
+            <span><span class="step-badge">2</span> Search Parameters <span id="glParamCount" style="font-size:11px;font-weight:400;color:var(--muted);margin-left:8px">(30 params)</span></span>
+            <span id="glParamToggle" style="font-size:12px;color:var(--accent);font-weight:500">&#9660; Click to edit</span>
+          </div>
+          <div id="glParamBox" style="display:none">
+            <p style="font-size:12px;color:var(--muted);margin-bottom:8px;">One parameter per line. Exact match, case-insensitive.</p>
+            <textarea id="glParams" style="width:100%;height:200px;background:var(--bg);border:1.5px solid var(--border);border-radius:8px;color:var(--text);font-size:12px;font-family:var(--mono);padding:12px;outline:none;resize:vertical;">cellRange
+qRxLevMin
+CRSGAIN
+CXC4011809
+CXC4012607
+dscp
+servOrPrioTriggeredIFHo
+drxProfileEnabled
+additionalPlmnReservedList
+endcAllowedPlmnList
+rohcForUlDataEnabled
+selectedKeyExchanges
+pZeroNomPucch
+pZeroNomPuschGrant
+rachPreambleRecTargetPower
+thresholdRsrp
+a3offset
+a5Threshold2Rsrp
+a5Threshold2Rsrq
+threshXLowQ
+reportAmountA5
+lowHighFreqPrioClassification
+interFreqHoHigherPrioEndc
+servOrPrioIFHoSetupBearer
+spifhoDedicatedReportConfig
+dlCalibrationEnabled
+dlInterferenceManagementActive
+catm1SupportEnabled
+capCellRrcConnSleepThreshold
+covCellRrcConnWakeUpThreshold</textarea>
+            <div style="display:flex;gap:8px;margin-top:8px;">
+              <button onclick="saveGLParams()" style="padding:7px 16px;background:var(--accent);color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">Save</button>
+              <span id="glSaveMsg" style="font-size:12px;color:var(--green);line-height:32px;"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <button class="gen-btn-main" id="glRunBtn" onclick="runGLAudit()">
+        <div class="spinner" id="glSpinner"></div>
+        <span id="glBtnTxt">&#128269; Run Parameter Search</span>
+      </button>
+      <div class="gl-status" id="glStatus"></div>
+      <div class="status-box" id="glStatusBox">
+        <div class="summary-row" id="glSummaryRow" style="display:none;grid-template-columns:repeat(3,1fr)"></div>
+        <div class="dl-section" id="glDlSection"></div>
+      </div>
+    </div>
+
+    <!-- LOCK / UNLOCK TOOL -->
+    <div class="panel" id="panel-lockunlock" style="max-width:860px">
+      <div class="home-welcome"><h2>&#128274; Lock / Unlock Tool</h2><p>Upload ST Cell output &rarr; Select mode &rarr; Generate cmedit commands</p></div>
+
+      <!-- Mode -->
+      <div class="gen-section">
+        <div class="section-card">
+          <div class="section-title"><span class="step-badge">1</span> Select Mode</div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <button class="lu-mode-btn active-sd" id="lu-btn-SD" onclick="luSetMode('SHUTTINGDOWN',this)">&#9940; SHUTTINGDOWN</button>
+            <button class="lu-mode-btn" id="lu-btn-UL" onclick="luSetMode('UNLOCKED',this)">&#128275; UNLOCKED</button>
+            <button class="lu-mode-btn" id="lu-btn-LK" onclick="luSetMode('LOCKED',this)">&#128274; LOCKED</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Filter -->
+      <div class="gen-section">
+        <div class="section-card">
+          <div class="section-title"><span class="step-badge">2</span> Cell Filter</div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <button class="lu-filter-btn active-filter" id="lu-f-EN" onclick="luSetFilter('ENABLED',this)">ENABLED only</button>
+            <button class="lu-filter-btn" id="lu-f-UL" onclick="luSetFilter('UNLOCKED',this)">UNLOCKED only</button>
+            <button class="lu-filter-btn" id="lu-f-ALL" onclick="luSetFilter('ALL',this)">ALL cells</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Upload -->
+      <div class="gen-section">
+        <div class="section-card">
+          <div class="section-title"><span class="step-badge">3</span> Upload ST Cell Output (.txt)</div>
+          <div class="upload-zone" id="luZone">
+            <input type="file" id="luFile" accept=".txt" onchange="luReadFile(this)" />
+            <div class="upload-icon">&#128196;</div>
+            <p><strong>Click to upload</strong> or drag &amp; drop</p>
+            <div class="file-badge" id="luBadge"></div>
+          </div>
+          <!-- Paste fallback -->
+          <div style="margin-top:12px">
+            <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:6px;">Or paste ST cell output directly:</label>
+            <textarea id="luPaste" rows="6" oninput="luGenerate()" placeholder="Paste st cell output here..." style="width:100%;padding:10px;background:var(--bg);border:1.5px solid var(--border);border-radius:8px;color:var(--text);font-size:12px;font-family:var(--mono);outline:none;resize:vertical;"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- Output -->
+      <div class="section-card" id="luOutputCard" style="display:none">
+        <div class="section-title" style="justify-content:space-between">
+          <span>Generated Commands</span>
+          <div style="display:flex;gap:8px">
+            <span id="luStats" style="font-size:12px;font-weight:400;color:var(--text2);font-family:var(--mono);"></span>
+            <button onclick="luCopy()" style="padding:6px 14px;background:var(--accent);color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">&#128203; Copy</button>
+            <button onclick="luDownload()" style="padding:6px 14px;background:var(--green);color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">&#11015;&#65039; Download</button>
+          </div>
+        </div>
+        <div id="luSkipped" style="display:none;font-size:11px;color:var(--amber);font-family:var(--mono);margin-bottom:8px;padding:6px 10px;background:var(--amber-light);border-radius:6px;"></div>
+        <div id="luOutput" style="background:var(--bg);border:1.5px solid var(--border);border-radius:8px;padding:16px;font-family:var(--mono);font-size:12px;line-height:1.8;max-height:420px;overflow-y:auto;white-space:pre-wrap;"></div>
+      </div>
+    </div>
+
+    <!-- MANUAL CMD -->
+    <div class="panel" id="panel-manualcmd" style="max-width:860px">
+      <div class="home-welcome"><h2>&#128221; Manual Command Builder</h2><p>Upload CIQ &rarr; Pick band(s) &rarr; Write a custom command template</p></div>
+
+      <!-- Upload -->
+      <div class="gen-section">
+        <div class="section-card">
+          <div class="section-title"><span class="step-badge">1</span> Upload CIQ (Excel)</div>
+          <div class="upload-zone" id="manualCiqZone">
+            <input type="file" id="manualCiqFile" accept=".xlsx,.xls" />
+            <div class="upload-icon">&#128202;</div>
+            <p><strong>Click to upload</strong> or drag &amp; drop</p>
+            <div class="file-badge" id="manualCiqBadge"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="gen-section">
+        <div class="section-card">
+          <div style="display:flex;gap:12px;margin-bottom:12px;">
+            <div style="flex:1">
+              <label style="display:block;font-size:12px;color:var(--text2);margin-bottom:5px;font-weight:600;">Technology</label>
+              <select id="manualTech" onchange="manualOnTechChange()" style="width:100%;padding:9px 10px;border-radius:8px;font-size:13px;border:1.5px solid var(--border);background:var(--bg);color:var(--text);">
+                <option value="LTE">LTE</option>
+                <option value="5G">5G</option>
+              </select>
+            </div>
+          </div>
+
+          <div style="margin-bottom:12px;">
+            <label style="display:block;font-size:12px;color:var(--text2);margin-bottom:6px;font-weight:600;">Band(s) — click to select one or more (none selected = all bands)</label>
+            <div id="manualBandChecks" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+          </div>
+
+          <div style="font-size:12px;color:var(--amber);margin-bottom:12px;padding:9px 12px;background:var(--amber-light);border-radius:8px;">
+            Currently selected: <b id="manualCurrentSel">—</b>
+          </div>
+
+          <div style="margin-bottom:10px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+              <span style="font-size:12px;color:var(--text2);">Command template — use <code>XXSITEIDXX</code> and (optionally) <code>XXSECTORIDXX</code> as placeholders</span>
+              <button onclick="manualAddTemplate()" style="padding:6px 14px;background:var(--accent);color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">+ Add command</button>
+            </div>
+            <div id="manualTemplatesContainer"></div>
+          </div>
+
+          <div style="display:flex;align-items:center;justify-content:space-between;margin:14px 0 8px;">
+            <span style="font-size:12px;color:var(--text2);font-weight:600;">Generated command(s)</span>
+            <button onclick="manualCopyOutput()" style="padding:6px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;font-size:12px;cursor:pointer;color:var(--text);">&#128203; Copy all</button>
+          </div>
+          <div id="manualCmdOutput" style="background:var(--bg);border:1.5px solid var(--border);border-radius:8px;padding:16px;font-family:var(--mono);font-size:12px;line-height:1.8;max-height:420px;overflow-y:auto;white-space:pre-wrap;">
+            <div style="text-align:center;padding:1.5rem;color:var(--muted);font-size:13px;">Upload a CIQ above, then add a command</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ADMIN -->
+  </div>
+</div>
+
+<!-- FGA G2 TEMPLATE -->
+<script id="TPL_FGA_G2" type="text/plain">set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext=XXSITEIDXX,ManagedElement=XXSITEIDXX,ENodeBFunction=1,EUtranCellFDD=XXALPHASECTORXX"
+interFreqHoHigherPrioEnabled : TRUE
+interFreqHoHigherPrioEndc : TRUE
+interFreqHoHigherPrioRre : TRUE
+servOrPrioIFHoSetupBearer : TRUE
+servOrPrioTriggeredIFHo : QCI
+spifhoDedicatedReportConfig : TRUE
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext=XXSITEIDXX,ManagedElement=XXSITEIDXX,ENodeBFunction=1,EUtranCellFDD=XXBETASECTORXX"
+interFreqHoHigherPrioEnabled : TRUE
+interFreqHoHigherPrioEndc : TRUE
+interFreqHoHigherPrioRre : TRUE
+servOrPrioIFHoSetupBearer : TRUE
+servOrPrioTriggeredIFHo : QCI
+spifhoDedicatedReportConfig : TRUE
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext=XXSITEIDXX,ManagedElement=XXSITEIDXX,ENodeBFunction=1,EUtranCellFDD=XXGAMMASECTORXX"
+interFreqHoHigherPrioEnabled : TRUE
+interFreqHoHigherPrioEndc : TRUE
+interFreqHoHigherPrioRre : TRUE
+servOrPrioIFHoSetupBearer : TRUE
+servOrPrioTriggeredIFHo : QCI
+spifhoDedicatedReportConfig : TRUE
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext=XXSITEIDXX,ManagedElement=XXSITEIDXX,ENodeBFunction=1,EUtranCellFDD=XXALPHASECTORXX,UeMeasControl=1,ReportConfigA5InterFreqHigherPrio=1"
+a5Threshold2Rsrp : -116
+a5Threshold2Rsrq : -160
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext=XXSITEIDXX,ManagedElement=XXSITEIDXX,ENodeBFunction=1,EUtranCellFDD=XXBETASECTORXX,UeMeasControl=1,ReportConfigA5InterFreqHigherPrio=1"
+a5Threshold2Rsrp : -116
+a5Threshold2Rsrq : -160
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext=XXSITEIDXX,ManagedElement=XXSITEIDXX,ENodeBFunction=1,EUtranCellFDD=XXGAMMASECTORXX,UeMeasControl=1,ReportConfigA5InterFreqHigherPrio=1"
+a5Threshold2Rsrp : -116
+a5Threshold2Rsrq : -160
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext=XXSITEIDXX,ManagedElement=XXSITEIDXX,ENodeBFunction=1,EUtranCellFDD=XXALPHASECTORXX,UeMeasControl=1,ReportConfigA5Spifho=1"
+a5Threshold2Rsrp : -116
+a5Threshold2Rsrq : -160
+timeToTriggerA5 : 40
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext=XXSITEIDXX,ManagedElement=XXSITEIDXX,ENodeBFunction=1,EUtranCellFDD=XXBETASECTORXX,UeMeasControl=1,ReportConfigA5Spifho=1"
+a5Threshold2Rsrp : -116
+a5Threshold2Rsrq : -160
+timeToTriggerA5 : 40
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext=XXSITEIDXX,ManagedElement=XXSITEIDXX,ENodeBFunction=1,EUtranCellFDD=XXGAMMASECTORXX,UeMeasControl=1,ReportConfigA5Spifho=1"
+a5Threshold2Rsrp : -116
+a5Threshold2Rsrq : -160
+timeToTriggerA5 : 40
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext=XXSITEIDXX,ManagedElement=XXSITEIDXX,ENodeBFunction=1,EUtranCellFDD=XXALPHASECTORXX,UeMeasControl=1"
+bothA5RsrpRsrqCheckSpifho : TRUE
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext=XXSITEIDXX,ManagedElement=XXSITEIDXX,ENodeBFunction=1,EUtranCellFDD=XXBETASECTORXX,UeMeasControl=1"
+bothA5RsrpRsrqCheckSpifho : TRUE
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext=XXSITEIDXX,ManagedElement=XXSITEIDXX,ENodeBFunction=1,EUtranCellFDD=XXGAMMASECTORXX,UeMeasControl=1"
+bothA5RsrpRsrqCheckSpifho : TRUE
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext=XXSITEIDXX,ManagedElement=XXSITEIDXX,SystemFunctions=1,Lm=1,FeatureState=CXC4011736"
+featureState : ACTIVATED
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext=XXSITEIDXX,ManagedElement=XXSITEIDXX,SystemFunctions=1,Lm=1,FeatureState=CXC4012704"
+featureState : ACTIVATED
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext=XXSITEIDXX,ManagedElement=XXSITEIDXX,ENodeBFunction=1,EUtranCellFDD=XXLowBandSectors,EUtranFreqRelation=5330"
+voicePrio : 0</script>
+
+<!-- FGA G3G4 TEMPLATE -->
+<script id="TPL_FGA_G3G4" type="text/plain">set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext=XXSITEIDXX,ManagedElement=XXSITEIDXX,ENodeBFunction=1,EUtranCellFDD=XXALPHASECTORXX"
+interFreqHoHigherPrioEnabled : TRUE
+interFreqHoHigherPrioEndc : TRUE
+interFreqHoHigherPrioMeas : TRUE
+interFreqHoHigherPrioRre : TRUE
+servOrPrioIFHoSetupBearer : TRUE
+servOrPrioTriggeredIFHo : QCI
+spifhoDedicatedReportConfig : TRUE
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext=XXSITEIDXX,ManagedElement=XXSITEIDXX,ENodeBFunction=1,EUtranCellFDD=XXBETASECTORXX"
+interFreqHoHigherPrioEnabled : TRUE
+interFreqHoHigherPrioEndc : TRUE
+interFreqHoHigherPrioMeas : TRUE
+interFreqHoHigherPrioRre : TRUE
+servOrPrioIFHoSetupBearer : TRUE
+servOrPrioTriggeredIFHo : QCI
+spifhoDedicatedReportConfig : TRUE
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext=XXSITEIDXX,ManagedElement=XXSITEIDXX,ENodeBFunction=1,EUtranCellFDD=XXGAMMASECTORXX"
+interFreqHoHigherPrioEnabled : TRUE
+interFreqHoHigherPrioEndc : TRUE
+interFreqHoHigherPrioMeas : TRUE
+interFreqHoHigherPrioRre : TRUE
+servOrPrioIFHoSetupBearer : TRUE
+servOrPrioTriggeredIFHo : QCI
+spifhoDedicatedReportConfig : TRUE
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext=XXSITEIDXX,ManagedElement=XXSITEIDXX,ENodeBFunction=1,EUtranCellFDD=XXALPHASECTORXX,UeMeasControl=1,ReportConfigA5InterFreqHigherPrio=1"
+a5Threshold2Rsrp : -116
+a5Threshold2Rsrq : -160
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext=XXSITEIDXX,ManagedElement=XXSITEIDXX,ENodeBFunction=1,EUtranCellFDD=XXBETASECTORXX,UeMeasControl=1,ReportConfigA5InterFreqHigherPrio=1"
+a5Threshold2Rsrp : -116
+a5Threshold2Rsrq : -160
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext=XXSITEIDXX,ManagedElement=XXSITEIDXX,ENodeBFunction=1,EUtranCellFDD=XXGAMMASECTORXX,UeMeasControl=1,ReportConfigA5InterFreqHigherPrio=1"
+a5Threshold2Rsrp : -116
+a5Threshold2Rsrq : -160
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext=XXSITEIDXX,ManagedElement=XXSITEIDXX,ENodeBFunction=1,EUtranCellFDD=XXALPHASECTORXX,UeMeasControl=1,ReportConfigA5Spifho=1"
+a5Threshold2Rsrp : -116
+a5Threshold2Rsrq : -160
+timeToTriggerA5 : 40
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext=XXSITEIDXX,ManagedElement=XXSITEIDXX,ENodeBFunction=1,EUtranCellFDD=XXBETASECTORXX,UeMeasControl=1,ReportConfigA5Spifho=1"
+a5Threshold2Rsrp : -116
+a5Threshold2Rsrq : -160
+timeToTriggerA5 : 40
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext=XXSITEIDXX,ManagedElement=XXSITEIDXX,ENodeBFunction=1,EUtranCellFDD=XXGAMMASECTORXX,UeMeasControl=1,ReportConfigA5Spifho=1"
+a5Threshold2Rsrp : -116
+a5Threshold2Rsrq : -160
+timeToTriggerA5 : 40
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext=XXSITEIDXX,ManagedElement=XXSITEIDXX,ENodeBFunction=1,EUtranCellFDD=XXALPHASECTORXX,UeMeasControl=1,ReportConfigA1A2HigherPrio=1"
+thresholdRsrp : -105
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext=XXSITEIDXX,ManagedElement=XXSITEIDXX,ENodeBFunction=1,EUtranCellFDD=XXBETASECTORXX,UeMeasControl=1,ReportConfigA1A2HigherPrio=1"
+thresholdRsrp : -105
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext=XXSITEIDXX,ManagedElement=XXSITEIDXX,ENodeBFunction=1,EUtranCellFDD=XXGAMMASECTORXX,UeMeasControl=1,ReportConfigA1A2HigherPrio=1"
+thresholdRsrp : -105
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext=XXSITEIDXX,ManagedElement=XXSITEIDXX,ENodeBFunction=1,EUtranCellFDD=XXALPHASECTORXX,UeMeasControl=1"
+bothA5RsrpRsrqCheckSpifho : TRUE
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext=XXSITEIDXX,ManagedElement=XXSITEIDXX,ENodeBFunction=1,EUtranCellFDD=XXBETASECTORXX,UeMeasControl=1"
+bothA5RsrpRsrqCheckSpifho : TRUE
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext=XXSITEIDXX,ManagedElement=XXSITEIDXX,ENodeBFunction=1,EUtranCellFDD=XXGAMMASECTORXX,UeMeasControl=1"
+bothA5RsrpRsrqCheckSpifho : TRUE
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext=XXSITEIDXX,ManagedElement=XXSITEIDXX,SystemFunctions=1,Lm=1,FeatureState=CXC4011736"
+featureState : ACTIVATED
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext=XXSITEIDXX,ManagedElement=XXSITEIDXX,SystemFunctions=1,Lm=1,FeatureState=CXC4012704"
+featureState : ACTIVATED
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext=XXSITEIDXX,ManagedElement=XXSITEIDXX,ENodeBFunction=1,EUtranCellFDD=XXALPHASECTORXX,EUtranFreqRelation=5330"
+voicePrio : 0
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext=XXSITEIDXX,ManagedElement=XXSITEIDXX,ENodeBFunction=1,EUtranCellFDD=XXBETASECTORXX,EUtranFreqRelation=5330"
+voicePrio : 0
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext=XXSITEIDXX,ManagedElement=XXSITEIDXX,ENodeBFunction=1,EUtranCellFDD=XXGAMMASECTORXX,EUtranFreqRelation=5330"
+voicePrio : 0</script>
+
+<script>
+// ── ToolPortal SPA back navigation ─────────────────────────────────────────
+// When embedded in the ToolPortal shell (via <iframe>), tell the parent to
+// navigate back to the dashboard. When opened standalone (e.g. by a
+// developer testing this file directly), there is no parent app to notify,
+// so this safely does nothing instead of navigating to a broken URL.
+function trinovaBackToPortal() {
+  if (window.parent && window.parent !== window) {
+    window.parent.postMessage({ type: 'trinova:navigate', target: 'dashboard' }, '*');
+  }
+}
+
+var sel={nds:false,fga:false,v3:false,v4:false,v5:false,v6:false,v7:false,v8:false};
+var fgaGen='auto';
+
+var breadcrumbs={audit:'Audit Tool',generator:'Audit Tool / Delta Scripts',glaudit:'Audit Tool / GL Audit',lockunlock:'Audit Tool / Lock & Unlock',manualcmd:'Audit Tool / Manual Cmd'};
+
+function showPanel(id){
+  document.querySelectorAll('.panel').forEach(function(p){p.classList.remove('active');});
+  document.querySelectorAll('.nav-item').forEach(function(n){n.classList.remove('active');});
+  document.getElementById('panel-'+id).classList.add('active');
+  if(document.getElementById('nav-'+id))document.getElementById('nav-'+id).classList.add('active');
+  document.getElementById('breadcrumb').textContent=breadcrumbs[id]||'Audit Tool';
+}
+
+function toggleScript(key){
+  sel[key]=!sel[key];
+  document.getElementById('opt-'+key).classList.toggle('selected',sel[key]);
+}
+
+var manualBandGroups={LTE:{},'5G':{}};
+var manualTemplateCount=0;
+var manualCiqInput=document.getElementById('manualCiqFile');
+var manualCiqZone=document.getElementById('manualCiqZone');
+manualCiqInput.addEventListener('change',function(){
+  if(manualCiqInput.files[0]){
+    manualCiqZone.classList.add('has-file');
+    var b=document.getElementById('manualCiqBadge');b.textContent='\u2713 '+manualCiqInput.files[0].name;b.style.display='inline-block';
+    manualParseCiq();
+  }
+});
+manualCiqZone.addEventListener('dragover',function(e){e.preventDefault();manualCiqZone.classList.add('dragover');});
+manualCiqZone.addEventListener('dragleave',function(){manualCiqZone.classList.remove('dragover');});
+manualCiqZone.addEventListener('drop',function(e){e.preventDefault();manualCiqZone.classList.remove('dragover');if(e.dataTransfer.files[0]){manualCiqInput.files=e.dataTransfer.files;manualCiqInput.dispatchEvent(new Event('change'));}});
+
+var SITE_ID_MANUAL='';
+
+async function manualParseCiq(){
+  try{
+    var ab=await manualCiqInput.files[0].arrayBuffer();
+    var wb=XLSX.read(ab,{type:'array'});
+    manualBandGroups={LTE:{},'5G':{}};
+
+    // Detect Site ID from Mixed Mode Info
+    var mmSheet=wb.Sheets['Mixed Mode Info'];
+    if(mmSheet){
+      var mmi=XLSX.utils.sheet_to_json(mmSheet,{header:1,defval:''});
+      SITE_ID_MANUAL='';
+      for(var i=0;i<mmi.length;i++){
+        if(String(mmi[i][0]).toLowerCase().indexOf('node')>=0){
+          if(mmi[i+1]&&mmi[i+1][0]){SITE_ID_MANUAL=String(mmi[i+1][0]).trim().toUpperCase();break;}
+        }
+      }
+      if(!SITE_ID_MANUAL&&mmi[1]&&mmi[1][0])SITE_ID_MANUAL=String(mmi[1][0]).trim().toUpperCase();
+    }
+
+    var euSheet=wb.Sheets['eUtran Parameters'];
+    if(euSheet){
+      var euRows=XLSX.utils.sheet_to_json(euSheet,{defval:''});
+      var cellKey=euRows.length?Object.keys(euRows[0]).find(function(k){return k.indexOf('EutranCellFDDId')>=0||k.indexOf('EutranCell')>=0;}):null;
+      var bandKey=euRows.length?Object.keys(euRows[0]).find(function(k){return k.toLowerCase().indexOf('operating band')>=0;}):null;
+      if(cellKey&&bandKey){
+        euRows.forEach(function(row){
+          var cell=row[cellKey];
+          if(!cell)return;
+          var band=manualExtractLteBand(String(row[bandKey]));
+          if(!manualBandGroups.LTE[band])manualBandGroups.LTE[band]=[];
+          manualBandGroups.LTE[band].push(String(cell));
+        });
+      }
+    }
+    var fgSheet=wb.Sheets['5G Info'];
+    if(fgSheet){
+      var fgRows=XLSX.utils.sheet_to_json(fgSheet,{defval:''});
+      var fCellKey=fgRows.length?Object.keys(fgRows[0]).find(function(k){return k.indexOf('NRCellDU')>=0;}):null;
+      var fBandKey=fgRows.length?Object.keys(fgRows[0]).find(function(k){return k.toLowerCase().indexOf('operating band')>=0;}):null;
+      if(fCellKey&&fBandKey){
+        fgRows.forEach(function(row){
+          var cell=row[fCellKey];
+          if(!cell)return;
+          var v=String(row[fBandKey]).trim();
+          var band=/^\d+$/.test(v)?'n'+v:v;
+          if(!manualBandGroups['5G'][band])manualBandGroups['5G'][band]=[];
+          manualBandGroups['5G'][band].push(String(cell));
+        });
+      }
+    }
+    manualPopulateBandChecks();
+    manualUpdateCurrentSel();
+  }catch(err){console.error('Manual CIQ parse error',err);}
+}
+
+function manualExtractLteBand(val){
+  var m=val.match(/[Bb][Aa][Nn][Dd]\s*(\d+)/);
+  if(!m)return val;
+  return 'B'+m[1];
+}
+
+function manualGetActiveTech(){return document.getElementById('manualTech').value;}
+function manualGetActiveBandGroups(tech){return manualBandGroups[tech||manualGetActiveTech()]||{};}
+
+function manualPopulateBandChecks(){
+  var tech=manualGetActiveTech();
+  var groups=manualGetActiveBandGroups(tech);
+  var bands=Object.keys(groups);
+  var container=document.getElementById('manualBandChecks');
+  container.innerHTML=bands.map(function(b){
+    return '<label style="font-size:12px;padding:5px 12px;border-radius:20px;cursor:pointer;border:1.5px solid var(--border);background:var(--surface2);color:var(--text);user-select:none;display:inline-flex;align-items:center;gap:4px;">'+
+      '<input type="checkbox" value="'+b+'" onchange="manualOnBandCheckChange()" style="margin:0;">'+
+      b+' ('+groups[b].length+')</label>';
+  }).join('');
+}
+
+function manualOnBandCheckChange(){manualUpdateCurrentSel();}
+function manualOnTechChange(){manualPopulateBandChecks();manualUpdateCurrentSel();}
+
+function manualClearBandChecks(){
+  document.querySelectorAll('#manualBandChecks input').forEach(function(cb){cb.checked=false;});
+}
+function manualGetSelectedBands(){
+  return Array.from(document.querySelectorAll('#manualBandChecks input:checked')).map(function(cb){return cb.value;});
+}
+
+function manualUpdateCurrentSel(){
+  var siteId=SITE_ID_MANUAL||'(no site detected)';
+  var tech=manualGetActiveTech();
+  var bands=manualGetSelectedBands();
+  var label=bands.length?(tech+' \u2014 '+bands.join(', ')):(tech+' \u2014 all bands');
+  document.getElementById('manualCurrentSel').textContent=siteId+' | '+label;
+}
+
+function manualTemplateNeedsSector(tpl){return tpl.indexOf('XXSECTORIDXX')>=0;}
+
+function manualAddTemplate(){
+  manualTemplateCount++;
+  var container=document.getElementById('manualTemplatesContainer');
+  var id='manual-tpl-'+manualTemplateCount;
+  var tech=manualGetActiveTech();
+  var bands=manualGetSelectedBands();
+
+  var div=document.createElement('div');
+  div.style.cssText='margin-bottom:10px;background:var(--surface2);border-radius:10px;padding:10px;border:1px solid var(--border);';
+  div.dataset.tech=tech;
+  div.dataset.bands=JSON.stringify(bands);
+
+  div.innerHTML='<div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap;align-items:center;">'+
+    manualBuildMetaHtml(tech,bands)+
+    '<span style="font-size:10px;color:var(--accent);cursor:pointer;text-decoration:underline;" onclick="manualResyncTemplate(this)">use current selection</span>'+
+    '</div>'+
+    '<textarea oninput="manualRenderCommands()" style="width:100%;min-height:90px;font-family:var(--mono);font-size:12px;border:1.5px solid var(--border);border-radius:8px;padding:10px;background:var(--bg);color:var(--text);resize:vertical;line-height:1.6;" placeholder="set&#10;FDN : &quot;...EUtranCellFDD=XXSECTORIDXX&quot;&#10;param : value"></textarea>'+
+    '<button onclick="this.parentElement.remove();manualRenderCommands();" style="margin-top:6px;padding:5px 12px;background:var(--bg);border:1px solid var(--border);border-radius:6px;font-size:11px;cursor:pointer;color:var(--text2);">&#128465;&#65039; Remove</button>';
+  container.appendChild(div);
+
+  manualClearBandChecks();
+  manualUpdateCurrentSel();
+  manualRenderCommands();
+}
+
+function manualBuildMetaHtml(tech,bands){
+  if(bands.length===0){
+    return '<span style="font-size:11px;padding:2px 8px;border-radius:6px;background:var(--accent-light);color:var(--accent);font-weight:600;">'+tech+' \u2014 all bands</span>';
+  }
+  return bands.map(function(b){
+    return '<span style="font-size:11px;padding:2px 8px;border-radius:6px;background:var(--accent-light);color:var(--accent);font-weight:600;">'+tech+' \u2014 '+b+'</span>';
+  }).join('');
+}
+
+function manualResyncTemplate(el){
+  var row=el.closest('div[data-tech]')||el.parentElement.parentElement;
+  var tech=manualGetActiveTech();
+  var bands=manualGetSelectedBands();
+  row.dataset.tech=tech;
+  row.dataset.bands=JSON.stringify(bands);
+  var metaRow=row.querySelector('div');
+  metaRow.innerHTML=manualBuildMetaHtml(tech,bands)+'<span style="font-size:10px;color:var(--accent);cursor:pointer;text-decoration:underline;" onclick="manualResyncTemplate(this)">use current selection</span>';
+  manualRenderCommands();
+}
+
+function manualRenderCommands(){
+  var out=document.getElementById('manualCmdOutput');
+  var siteId=SITE_ID_MANUAL||'';
+  var rows=Array.from(document.querySelectorAll('#manualTemplatesContainer > div'));
+
+  if(!siteId){
+    out.innerHTML='<div style="text-align:center;padding:1.5rem;color:var(--muted);font-size:13px;">Upload a CIQ and generate once to detect Site ID, then add a command</div>';
+    return;
+  }
+  if(rows.length===0){
+    out.innerHTML='<div style="text-align:center;padding:1.5rem;color:var(--muted);font-size:13px;">Add a command above to generate output</div>';
+    return;
+  }
+
+  var html='';
+  var anyOutput=false;
+
+  rows.forEach(function(row){
+    var tpl=row.querySelector('textarea').value;
+    if(!tpl.trim())return;
+
+    var needsSector=manualTemplateNeedsSector(tpl);
+
+    if(!needsSector){
+      anyOutput=true;
+      var filled=tpl.split('XXSITEIDXX').join(siteId);
+      html+='<div style="margin-bottom:12px;">'+manualEscapeHtml(filled)+'</div>';
+      return;
+    }
+
+    var tech=row.dataset.tech;
+    var bands=JSON.parse(row.dataset.bands||'[]');
+    var groups=manualGetActiveBandGroups(tech);
+    var scopeBands=bands.length?bands:Object.keys(groups);
+    var cells=[];
+    scopeBands.forEach(function(b){cells=cells.concat(groups[b]||[]);});
+    cells=Array.from(new Set(cells));
+
+    cells.forEach(function(sectorId){
+      anyOutput=true;
+      var filled=tpl.split('XXSITEIDXX').join(siteId).split('XXSECTORIDXX').join(sectorId);
+      html+='<div style="margin-bottom:12px;">'+manualEscapeHtml(filled)+'</div>';
+    });
+  });
+
+  out.innerHTML=anyOutput?html:'<div style="text-align:center;padding:1.5rem;color:var(--muted);font-size:13px;">Enter a command template above to generate output</div>';
+}
+
+function manualEscapeHtml(s){
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function manualCopyOutput(){
+  var blocks=document.getElementById('manualCmdOutput').innerText.trim();
+  if(!blocks){alert('Nothing to copy yet.');return;}
+  navigator.clipboard.writeText(blocks).then(function(){alert('Copied to clipboard!');});
+}
+
+function setGen(e,val){
+  e.stopPropagation();fgaGen=val;
+  ['auto','g2','g3g4'].forEach(function(v){document.getElementById('fga-'+v).classList.remove('active');});
+  document.getElementById('fga-'+val.toLowerCase()).classList.add('active');
+}
+
+// CIQ upload
+var ciqInput=document.getElementById('ciqFile');
+var ciqZone=document.getElementById('ciqZone');
+ciqInput.addEventListener('change',function(){
+  if(ciqInput.files[0]){ciqZone.classList.add('has-file');var b=document.getElementById('ciqBadge');b.textContent='\u2713 '+ciqInput.files[0].name;b.style.display='inline-block';}
+});
+ciqZone.addEventListener('dragover',function(e){e.preventDefault();ciqZone.classList.add('dragover');});
+ciqZone.addEventListener('dragleave',function(){ciqZone.classList.remove('dragover');});
+ciqZone.addEventListener('drop',function(e){e.preventDefault();ciqZone.classList.remove('dragover');if(e.dataTransfer.files[0]){ciqInput.files=e.dataTransfer.files;ciqInput.dispatchEvent(new Event('change'));}});
+
+function log(msg,type){
+  type=type||'info';
+  console.log('['+type+'] '+msg);
+}
+
+var pickedFolderHandle = null;
+
+async function pickFolder(){
+  try {
+    pickedFolderHandle = await window.showDirectoryPicker();
+    document.getElementById('folderPath').value = pickedFolderHandle.name;
+  } catch(e){
+    if(e.name !== 'AbortError') alert('Folder selection not supported in this browser.');
+  }
+}
+
+async function addDl(content, filename, label){
+  var blob = new Blob([content], {type:'text/plain'});
+  if(pickedFolderHandle){
+    try {
+      var fileHandle = await pickedFolderHandle.getFileHandle(filename, {create:true});
+      var writable = await fileHandle.createWritable();
+      await writable.write(blob);
+      await writable.close();
+      return;
+    } catch(e){ console.warn('Direct save failed', e); }
+  }
+  // Fallback: normal browser download
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+}
+
+function getBandKey(band){
+  var b=(band||'').toUpperCase();
+  if(b.indexOf('BAND 29')>=0||b.indexOf('BAND29')>=0)return'B29';
+  if(b.indexOf('BAND 14')>=0)return'B14';
+  if(b.indexOf('BAND 66')>=0)return'B66';
+  if(b.indexOf('BAND 4')>=0&&b.indexOf('BAND 14')<0&&b.indexOf('BAND 66')<0)return'B4';
+  if(b.indexOf('BAND 2')>=0&&b.indexOf('BAND 29')<0&&b.indexOf('BAND 12')<0&&b.indexOf('BAND 25')<0)return'B2';
+  if(b.indexOf('BAND 5')>=0)return'B5';
+  if(b.indexOf('BAND 30')>=0)return'B30';
+  if(b.indexOf('BAND 17')>=0)return'B17';
+  if(b.indexOf('BAND 12')>=0)return'B12';
+  return null;
+}
+
+function getSec(id){
+  var m=id.match(/_(\d+)([A-Ca-c])_/);
+  return m?({A:'ALPHA',B:'BETA',C:'GAMMA'}[m[2].toUpperCase()]||null):null;
+}
+
+function get5GSec(id){
+  var m=id.match(/N\d+([A-Ca-c])_/);
+  return m?({A:'ALPHA',B:'BETA',C:'GAMMA'}[m[1].toUpperCase()]||null):null;
+}
+
+function parseBlocks(text){
+  var r=[],lines=text.split('\n'),i=0,buf=[];
+  while(i<lines.length){
+    if(lines[i].trim()==='set'&&i+1<lines.length&&lines[i+1].trim().indexOf('FDN')===0){
+      if(buf.length){r.push({t:'other',c:buf.join('\n')});buf=[];}
+      var b=['set',lines[i+1]];var j=i+2;
+      while(j<lines.length&&lines[j].trim()!==''){b.push(lines[j]);j++;}
+      r.push({t:'set_block',c:b.join('\n')});i=j;
+    } else {buf.push(lines[i]);i++;}
+  }
+  if(buf.length)r.push({t:'other',c:buf.join('\n')});
+  return r;
+}
+
+function expandBlocks(blocks,ph,reps){
+  var r=[];
+  for(var i=0;i<blocks.length;i++){
+    var b=blocks[i];
+    if(b.t==='set_block'&&b.c.indexOf(ph)>=0){
+      for(var j=0;j<reps.length;j++)r.push({t:'set_block',c:b.c.split(ph).join(reps[j])});
+    } else r.push(b);
+  }
+  return r;
+}
+
+function removeBlocks(blocks,ph){
+  return blocks.filter(function(b){return!(b.t==='set_block'&&b.c.indexOf(ph)>=0);});
+}
+
+function rebuild(blocks){
+  var p=[],prev=null;
+  for(var i=0;i<blocks.length;i++){
+    var b=blocks[i];
+    if(b.t==='set_block'){if(prev==='set_block')p.push('');p.push(b.c);}
+    else p.push(b.c);
+    prev=b.t;
+  }
+  return p.join('\n');
+}
+
+async function generate(){
+  var btn=document.getElementById('genBtn'),sp=document.getElementById('spinner'),bt=document.getElementById('genBtnTxt');
+  document.getElementById('dlSection').innerHTML='';
+  if(!ciqInput.files[0]){alert('Please upload a CIQ Excel file');return;}
+  if(!sel.nds&&!sel.fga&&!sel.v3&&!sel.v4&&!sel.v5&&!sel.v6&&!sel.v7&&!sel.v8){alert('Please select at least one script');return;}
+  btn.disabled=true;sp.style.display='block';bt.textContent='Processing...';
+  try {
+    var ab=await ciqInput.files[0].arrayBuffer();
+    var wb=XLSX.read(ab,{type:'array'});
+    var rs=function(name){var s=wb.Sheets[name];return s?XLSX.utils.sheet_to_json(s,{header:1,defval:''}):[]; };
+    var folderPath=document.getElementById('folderPath').value.trim();
+
+    // Site ID
+    var mmi=rs('Mixed Mode Info'),SITE_ID='';
+    for(var i=0;i<mmi.length;i++){
+      if(String(mmi[i][0]).toLowerCase().indexOf('node')>=0){
+        if(mmi[i+1]&&mmi[i+1][0]){SITE_ID=String(mmi[i+1][0]).trim().toUpperCase();break;}
+      }
+    }
+    if(!SITE_ID&&mmi[1]&&mmi[1][0])SITE_ID=String(mmi[1][0]).trim().toUpperCase();
+    if(!SITE_ID){alert('Site ID not found in CIQ');return;}
+
+    // eUtran Parameters
+    var eu=rs('eUtran Parameters'),euHR=0;
+    for(var i=0;i<Math.min(eu.length,10);i++){if(eu[i].some(function(h){return String(h).trim()==='EutranCellFDDId';})){euHR=i;break;}}
+    var euH=eu[euHR];
+    var ci=function(n){return euH.findIndex(function(h){return String(h).trim()===n;});};
+    var cCell=ci('EutranCellFDDId'),cBand=ci('eUTRA operating band'),cEarfcn=ci('earfcnDl'),cRRU=ci('RRU type'),cBW=ci('dlChannelBandwidth'),cUlBW=ci('ulChannelBandwidth'),cDUS=ci('DUS / XMU'),cCellId=ci('cellId'),cCatm=ci('catm1SupportEnabled'),cHiCap=ci('High Capacity Site');
+    var b14CellIds=[],hasB5_5MHz=false,hasCatm=false,ulBwMap={},b30BandTextMap={},isHiCapSite=false,cellBwMap={};
+    var secLTE={},earfcnMap={},bwMap={},rruSet=new Set(),dusXmu='';
+    for(var i=euHR+1;i<eu.length;i++){
+      var row=eu[i],cellId=String(row[cCell]||'').trim();
+      if(!cellId)continue;
+      rruSet.add(String(row[cRRU]||'').trim());
+      if(!dusXmu&&row[cDUS])dusXmu=String(row[cDUS]).trim();
+      var sec=getSec(cellId),bk=getBandKey(String(row[cBand]||''));
+      var earfcn=parseFloat(row[cEarfcn]),bw=parseFloat(row[cBW]),ulBw=parseFloat(row[cUlBW]);
+      if(bk==='B5'&&ulBw===5000) hasB5_5MHz=true;
+      if(cCatm>=0&&String(row[cCatm]||'').trim()==='true') hasCatm=true;
+      if(cHiCap>=0&&String(row[cHiCap]||'').trim().toLowerCase()==='yes') isHiCapSite=true;
+      if(bk&&sec) ulBwMap[cellId]=ulBw;
+      if(bk&&sec){
+        if(bk==='B30') b30BandTextMap[cellId]=String(row[cBand]||'');
+        if(bk==='B14'&&cCellId>=0&&row[cCellId]) b14CellIds.push(String(row[cCellId]).trim());
+        if(!secLTE[bk])secLTE[bk]={};
+        if(!secLTE[bk][sec])secLTE[bk][sec]=[];
+        if(secLTE[bk][sec].indexOf(cellId)<0)secLTE[bk][sec].push(cellId);
+        if(!secLTE[bk][sec+'_first'])secLTE[bk][sec+'_first']=cellId;
+        if(!isNaN(earfcn)){if(!earfcnMap[bk])earfcnMap[bk]={};if(!earfcnMap[bk][sec])earfcnMap[bk][sec]=[];earfcnMap[bk][sec].push({earfcn:earfcn,cellId:cellId});}
+        if(!isNaN(bw)){if(!bwMap[bk])bwMap[bk]={};if(!bwMap[bk][sec])bwMap[bk][sec]=bw;}
+        if(!isNaN(bw)) cellBwMap[cellId]=bw;
+      }
+    }
+    var firstCell=function(band,sec){return(secLTE[band]||{})[sec+'_first']||null;};
+    var allCells=function(band,sec){return(secLTE[band]||{})[sec]||[];};
+    var hasRRUS4890=[...rruSet].some(function(r){return r.indexOf('4890')>=0;});
+    log('LTE bands: '+Object.keys(secLTE).filter(function(k){return k.indexOf('_first')<0;}).join(', '),'ok');
+
+    // 5G Info
+    var fg=rs('5G Info'),fgHR=0;
+    for(var i=0;i<Math.min(fg.length,10);i++){if(fg[i].some(function(h){return String(h).trim()==='NRCellDU';})){fgHR=i;break;}}
+    var fgH=fg[fgHR];
+    var gc=function(n){return fgH.findIndex(function(h){return String(h).trim()===n;});};
+    var gCell=gc('NRCellDU'),gBand=gc('Operating Band'),gNSA=gc('NSA/SA'),gRRU=gc('RRU Type'),gBwDL=gc('bSChannelBwDL');
+    var n077BwDLMap={};  // cellId -> bwDL for n077
+    var g5={},saSectors={},nsaSectors={},rruSet5G=new Set(),feat4012817='DEACTIVATED';
+    var AIR_MODELS=['AIR6419','AIR6449','AIR6472'];
+    var nrCellRruMap={};  // cellId -> RRU type for 5G cells
+    for(var i=fgHR+1;i<fg.length;i++){
+      var row=fg[i],nc=String(row[gCell]||'').trim();
+      if(!nc)continue;
+      var band=String(row[gBand]||'').trim(),nsaSa=String(row[gNSA]||'').trim();
+      var rru=String(row[gRRU]||'').trim(),bwDL=parseFloat(row[gBwDL]);
+      nrCellRruMap[nc]=rru;
+      if(band==='n077') n077BwDLMap[nc]=bwDL;
+      if(AIR_MODELS.some(function(a){return rru.indexOf(a)>=0;})&&!isNaN(bwDL)&&bwDL>=30)feat4012817='ACTIVATED';
+      var sec=get5GSec(nc);if(!sec)continue;
+      if(!g5[band])g5[band]={};if(!g5[band][sec])g5[band][sec]=[];g5[band][sec].push(nc);
+      if(nsaSa==='SA'){if(!saSectors[band])saSectors[band]={};if(!saSectors[band][sec])saSectors[band][sec]=[];saSectors[band][sec].push(nc);}
+      if(nsaSa==='NSA'){if(!nsaSectors[band])nsaSectors[band]={};if(!nsaSectors[band][sec])nsaSectors[band][sec]=[];nsaSectors[band][sec].push(nc);}
+    }
+
+    var G2v=new Set(['5216','6630']),G3v=new Set(['6648','6651']),G4v=new Set(['6672','6507']);
+    var autoGen='G3G4';
+    if(G2v.has(dusXmu))autoGen='G2';
+    else if(G3v.has(dusXmu)||G4v.has(dusXmu))autoGen='G3G4';
+
+    // Nokia_Relations(LTE-NR) parsing
+    var nokiaLTENR=rs('Nokia_Relations(LTE-NR)'),nokiaHR=0;
+    for(var i=0;i<Math.min(nokiaLTENR.length,5);i++){if(nokiaLTENR[i].some(function(h){return String(h).trim()==='GutranFreqRelationID';})){nokiaHR=i;break;}}
+    var nokiaH=nokiaLTENR[nokiaHR];
+    var nEric=nokiaH.findIndex(function(h){return String(h).trim()==='Ericsson FDD/TDD';});
+    var nGutran=nokiaH.findIndex(function(h){return String(h).trim()==='GutranFreqRelationID';});
+    // Map: ericsson cell -> highest priority relation (6=CB/DoD, 4=MB, 1=LB)
+    var nokiaCellRelMap={};
+    for(var i=nokiaHR+1;i<nokiaLTENR.length;i++){
+      var row=nokiaLTENR[i];
+      var ericCell=String(row[nEric]||'').trim();
+      var gutran=String(row[nGutran]||'').trim();
+      if(!ericCell||!gutran) continue;
+      var firstChar=gutran.charAt(0);
+      // Priority: 6 > 4 > 1
+      var prev=nokiaCellRelMap[ericCell]||'';
+      if(!prev||(firstChar==='6')||(firstChar==='4'&&prev.charAt(0)!=='6'))
+        nokiaCellRelMap[ericCell]=gutran;
+    }
+
+    // 5G band presence flags
+    var has850=!!(g5['850']);
+    var hasMB=!!(g5['PCS']||g5['AWS']);
+    var hasCBand=!!(g5['n077']);
+
+    // eNB Info tab - Structure Type for DAS detection
+    var enbInfo=rs('eNB Info'),enbHR=0;
+    for(var i=0;i<Math.min(enbInfo.length,10);i++){if(enbInfo[i].some(function(h){return String(h).trim()==='Structure Type';})){enbHR=i;break;}}
+    var enbH=enbInfo[enbHR]||[];
+    var enbStructCol=enbH.findIndex?enbH.findIndex(function(h){return String(h).trim()==='Structure Type';}):-1;
+    var isDAS=false;
+    if(enbStructCol>=0){
+      for(var i=enbHR+1;i<enbInfo.length;i++){
+        var stVal=String(enbInfo[i][enbStructCol]||'').toUpperCase();
+        if(stVal.indexOf('DAS')>=0){isDAS=true;break;}
+      }
+    }
+
+    // primaryUpperLayerInd logic
+    // Case 3: No 850 → skip entirely
+    // Case 1: 850 + (MB or CBand) → ON for B14+B17
+    // Case 2: 850 only → check Nokia tab GutranFreqRelationID
+    //   starts with 4 or 6 → ON, starts with 1 → OFF
+    var primaryUpperLayerCells=[]; // {cell, val}
+    if(has850){
+      var b14b17Sectors=[];
+      ['ALPHA','BETA','GAMMA'].forEach(function(s){
+        var c14=firstCell('B14',s); if(c14) b14b17Sectors.push(c14);
+        var c17=firstCell('B17',s); if(c17) b14b17Sectors.push(c17);
+      });
+      if(hasMB||hasCBand){
+        // Case 1: always ON
+        b14b17Sectors.forEach(function(c){primaryUpperLayerCells.push({cell:c,val:'ON'});});
+      } else {
+        // Case 2: check Nokia tab
+        b14b17Sectors.forEach(function(c){
+          var rel=nokiaCellRelMap[c]||'';
+          var fc=rel.charAt(0);
+          var val=(fc==='4'||fc==='6')?'ON':'OFF';
+          primaryUpperLayerCells.push({cell:c,val:val});
+        });
+      }
+    }
+    // Case 3: has850 is false → primaryUpperLayerCells stays empty → no commands generated
+
+    // ALL LTE sectors (shared across NDS and V3)
+    var allLTECells=[];
+    ['B17','B30','B2','B4','B66','B14','B29','B5','B12'].forEach(function(band){
+      if(secLTE[band])['ALPHA','BETA','GAMMA'].forEach(function(s){allLTECells=allLTECells.concat(allCells(band,s));});
+    });
+
+    if(sel.nds){
+      // CellSleep
+      var sleepCells=[];
+      ['B29','B30','B66'].forEach(function(band){if(secLTE[band])['ALPHA','BETA','GAMMA'].forEach(function(s){var c=firstCell(band,s);if(c)sleepCells.push(c);});});
+      if(secLTE['B5'])['ALPHA','BETA','GAMMA'].forEach(function(s){allCells('B5',s).forEach(function(c){if(cellBwMap[c]===5000)sleepCells.push(c);});});
+      var b2=!!(secLTE['B2']),b4=!!(secLTE['B4']),winner=null;
+      if(b2&&b4){
+        var b2m=Math.min.apply(null,Object.values(earfcnMap['B2']||{}).reduce(function(a,v){return a.concat(v);},[]).map(function(x){return x.earfcn;}));
+        var b4m=Math.min.apply(null,Object.values(earfcnMap['B4']||{}).reduce(function(a,v){return a.concat(v);},[]).map(function(x){return x.earfcn;}));
+        winner=b2m<=b4m?'B2':'B4';
+      } else if(b2)winner='B2'; else if(b4)winner='B4';
+      if(winner){var all=Object.values(earfcnMap[winner]||{}).reduce(function(a,v){return a.concat(v);},[]);var minE=Math.min.apply(null,all.map(function(x){return x.earfcn;}));all.filter(function(x){return x.earfcn===minE;}).forEach(function(x){sleepCells.push(x.cellId);});}
+
+      var sa850Cells=[];['ALPHA','BETA','GAMMA'].forEach(function(s){((saSectors['850']||{})[s]||[]).forEach(function(c){sa850Cells.push(c);});});
+      var nsaMcfbCells=[];['850','n077'].forEach(function(band){['ALPHA','BETA','GAMMA'].forEach(function(s){((nsaSectors[band]||{})[s]||[]).forEach(function(c){nsaMcfbCells.push(c);});});});
+      var isSA=Object.keys(saSectors).length>0;
+      var onlyCBand=hasCBand&&!has850&&!hasMB;
+      var hasB30=!!(secLTE['B30']);
+
+      // n077 cells where RRU is AIR6419/AIR6449/AIR6472
+      var n077Cells=[];
+      ['ALPHA','BETA','GAMMA'].forEach(function(s){(g5['n077']||{})[s]&&g5['n077'][s].forEach(function(c){n077Cells.push(c);});});
+
+      // ulHeavyUeDetect
+      var ulTrueBands=['B4','B2','B66','B17','B14','B30','B5'];
+      var ulTrueCells=[],ulFalseCells=[];
+      ulTrueBands.forEach(function(band){if(secLTE[band])['ALPHA','BETA','GAMMA'].forEach(function(s){ulTrueCells=ulTrueCells.concat(allCells(band,s));});});
+      if(secLTE['B29'])['ALPHA','BETA','GAMMA'].forEach(function(s){ulFalseCells=ulFalseCells.concat(allCells('B29',s));});
+
+      // ReportConfigSearch: NonB30 = B2/B4/B66/B5/B17, B30 = B30 only — ALL cells
+      var nonB30SearchCells=[];
+      ['B2','B4','B66','B5','B17'].forEach(function(band){if(secLTE[band])['ALPHA','BETA','GAMMA'].forEach(function(s){nonB30SearchCells=nonB30SearchCells.concat(allCells(band,s));});});
+      var b30SearchCells=[];
+      if(secLTE['B30'])['ALPHA','BETA','GAMMA'].forEach(function(s){b30SearchCells=b30SearchCells.concat(allCells('B30',s));});
+
+      // a1a2SearchThreshold: B2/B4/B66/B5 + B30 (10MHz only) — ALL cells
+      var a1a2Cells=[];
+      ['B2','B4','B66','B5'].forEach(function(band){if(secLTE[band])['ALPHA','BETA','GAMMA'].forEach(function(s){a1a2Cells=a1a2Cells.concat(allCells(band,s));});});
+      if(secLTE['B30'])['ALPHA','BETA','GAMMA'].forEach(function(s){allCells('B30',s).forEach(function(c){var bw=cellBwMap[c];if(bw===10000||bw===6400)a1a2Cells.push(c);});});
+
+      // systemInformationBlock3: B2/B4/B66/B30 — ALL cells
+      var sib3Cells=[];
+      ['B2','B4','B66','B30'].forEach(function(band){if(secLTE[band])['ALPHA','BETA','GAMMA'].forEach(function(s){sib3Cells=sib3Cells.concat(allCells(band,s));});});
+
+      // ReportConfigEUtraIFBestCell cells — ALL cells
+      var ifBestCellB2466B5B30=[];
+      ['B2','B4','B66','B5'].forEach(function(band){if(secLTE[band])['ALPHA','BETA','GAMMA'].forEach(function(s){ifBestCellB2466B5B30=ifBestCellB2466B5B30.concat(allCells(band,s));});});
+      if(secLTE['B30'])['ALPHA','BETA','GAMMA'].forEach(function(s){allCells('B30',s).forEach(function(c){var bw=cellBwMap[c];if(bw===10000||bw===6400)ifBestCellB2466B5B30.push(c);});});
+      var ifBestB17Cells=[];
+      if(secLTE['B17'])['ALPHA','BETA','GAMMA'].forEach(function(s){ifBestB17Cells=ifBestB17Cells.concat(allCells('B17',s));});
+      var ifBestB14Cells=[];
+      if(secLTE['B14'])['ALPHA','BETA','GAMMA'].forEach(function(s){ifBestB14Cells=ifBestB14Cells.concat(allCells('B14',s));});
+      var ifBestB29Cells=[];
+      if(secLTE['B29'])['ALPHA','BETA','GAMMA'].forEach(function(s){ifBestB29Cells=ifBestB29Cells.concat(allCells('B29',s));});
+
+      // ReportConfigSearch a1a2SearchThresholdRsrq=-170: B17 and B14 ALL cells
+      var searchB17Cells=[];
+      if(secLTE['B17'])['ALPHA','BETA','GAMMA'].forEach(function(s){searchB17Cells=searchB17Cells.concat(allCells('B17',s));});
+      var searchB14Cells=[];
+      if(secLTE['B14'])['ALPHA','BETA','GAMMA'].forEach(function(s){searchB14Cells=searchB14Cells.concat(allCells('B14',s));});
+
+      // ReportConfigSearch B14+B17 cells
+      var b14b17SearchCells=[];
+      if(secLTE['B14'])['ALPHA','BETA','GAMMA'].forEach(function(s){b14b17SearchCells=b14b17SearchCells.concat(allCells('B14',s));});
+      if(secLTE['B17'])['ALPHA','BETA','GAMMA'].forEach(function(s){b14b17SearchCells=b14b17SearchCells.concat(allCells('B17',s));});
+
+      // ReportConfigSCellA6 B17+B14 — firstCell
+      var scellA6B17B14=[];
+      ['ALPHA','BETA','GAMMA'].forEach(function(s){var c=firstCell('B17',s);if(c)scellA6B17B14.push(c);});
+      ['ALPHA','BETA','GAMMA'].forEach(function(s){var c=firstCell('B14',s);if(c)scellA6B17B14.push(c);});
+
+      // SA 5G LB+MB sectors (850 + PCS/AWS) for FN_SA
+      var saLbMbCells=[];
+      ['850','PCS','AWS'].forEach(function(band){['ALPHA','BETA','GAMMA'].forEach(function(s){((saSectors[band]||{})[s]||[]).forEach(function(c){saLbMbCells.push(c);});});});
+      // SA CBand/DoD (n077) for FN_SA
+      var saCBandCells=[];
+      ['ALPHA','BETA','GAMMA'].forEach(function(s){((saSectors['n077']||{})[s]||[]).forEach(function(c){saCBandCells.push(c);});});
+
+      var feat4011254=([...rruSet,...rruSet5G].some(function(r){return r.indexOf('4890')>=0;}))?'ACTIVATED':'DEACTIVATED';
+
+      var out=[];
+      var add=function(fdnSuffix,params){
+        out.push('set');
+        out.push('FDN : "SubNetwork=ONRM_ROOT_MO,MeContext='+SITE_ID+',ManagedElement='+SITE_ID+','+fdnSuffix+'"');
+        Object.keys(params).forEach(function(k){out.push(k+' : '+params[k]);});
+        out.push('');
+      };
+      var addCreate=function(fdnSuffix,params){
+        out.push('create');
+        out.push('FDN : "SubNetwork=ONRM_ROOT_MO,MeContext='+SITE_ID+',ManagedElement='+SITE_ID+','+fdnSuffix+'"');
+        Object.keys(params).forEach(function(k){out.push(k+' : '+params[k]);});
+        out.push('');
+      };
+
+      // Site level
+      add('SystemFunctions=1,Lm=1,FeatureState=CXC4011958',{featureState:'DEACTIVATED'});
+      add('SystemFunctions=1,Lm=1,FeatureState=CXC4012383',{featureState:'ACTIVATED'});
+      add('SystemFunctions=1,Lm=1,FeatureState=CXC4012606',{featureState:'ACTIVATED'});
+      add('SystemFunctions=1,Lm=1,FeatureState=CXC4012477',{featureState:'ACTIVATED'});
+      add('SystemFunctions=1,Lm=1,FeatureState=CXC4011809',{featureState:'DEACTIVATED'});
+      add('SystemFunctions=1,Lm=1,FeatureState=CXC4011981',{featureState:'ACTIVATED'});
+      add('SystemFunctions=1,Lm=1,FeatureState=CXC4012475',{featureState:'ACTIVATED'});
+      add('SystemFunctions=1,Lm=1,FeatureState=CXC4012595',{featureState:'DEACTIVATED'});
+      add('SystemFunctions=1,Lm=1,FeatureState=CXC4012775',{featureState:'ACTIVATED'});
+      add('SystemFunctions=1,Lm=1,FeatureState=CXC4012659',{featureState:'ACTIVATED'});
+      add('SystemFunctions=1,Lm=1,FeatureState=CXC4012713',{featureState:'ACTIVATED'});
+      add('SystemFunctions=1,Fm=1,FmAlarmModel=1,FmAlarmType=WiFiServiceActivated',{configuredSeverity:'CRITICAL'});
+      add('GNBCUCPFunction=1,UeGroupSelection=1,UeServiceGroupDefinition=TurboLive',{selectionCriteria:'"(spid==19&&qci==7)||(rfsp==19&&5qi==7)"'});
+      add('GNBDUFunction=1,AdmissionControl=1',{admissionPrioThreshold:'1',rrcHighPriorityAccessPrio:'12'});
+
+      // (allLTECells now computed globally before this block)
+
+      // ReportConfigSCellA1A2 - ALL LTE sectors (V16 new params)
+      allLTECells.forEach(function(c){add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1,ReportConfigSCellA1A2=1',{a1a2ThresholdRsrq:'-195',hysteresisA1A2Rsrp:'40',hysteresisA1A2Rsrq:'0',timeToTriggerA2:'1024',triggerQuantityA1A2:'RSRQ'});});
+
+      // ReportConfigSCellA6 timeToTriggerA6 removed per V16
+
+      // primaryUpperLayerInd B29 always OFF + B14/B17 per existing logic
+      ['ALPHA','BETA','GAMMA'].forEach(function(s){var c=firstCell('B29',s);if(c)add('ENodeBFunction=1,EUtranCellFDD='+c,{primaryUpperLayerInd:'OFF'});});
+      primaryUpperLayerCells.forEach(function(item){add('ENodeBFunction=1,EUtranCellFDD='+item.cell,{primaryUpperLayerInd:item.val});});
+
+      // bothInterA3RsrpRsrqCheck: True for non-B29, false for B29
+      var nonB29Cells=[];
+      ['B17','B30','B2','B4','B66','B14','B5','B12'].forEach(function(band){
+        if(secLTE[band])['ALPHA','BETA','GAMMA'].forEach(function(s){nonB29Cells=nonB29Cells.concat(allCells(band,s));});
+      });
+      nonB29Cells.forEach(function(c){add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1',{bothInterA3RsrpRsrqCheck:'True'});});
+      ulFalseCells.forEach(function(c){add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1',{bothInterA3RsrpRsrqCheck:'false'});});
+
+      // interFreqHoHigherPrio: False for non-B17, True for B17
+      nonB29Cells.filter(function(c){return !allCells('B17','ALPHA').concat(allCells('B17','BETA')).concat(allCells('B17','GAMMA')).includes(c);})
+        .forEach(function(c){add('ENodeBFunction=1,EUtranCellFDD='+c,{interFreqHoHigherPrioEnabled:'False',interFreqHoHigherPrioEndc:'False'});});
+      if(secLTE['B17'])['ALPHA','BETA','GAMMA'].forEach(function(s){allCells('B17',s).forEach(function(c){add('ENodeBFunction=1,EUtranCellFDD='+c,{interFreqHoHigherPrioEnabled:'True',interFreqHoHigherPrioEndc:'True'});});});
+
+      // B14 interFreqHoHigherPrio removed per V16
+
+      // CellSleep
+      sleepCells.forEach(function(c){add('ENodeBFunction=1,EUtranCellFDD='+c+',CellSleepFunction=1',{sleepStartTime:'"02:00"'});});
+
+      // Features
+      add('SystemFunctions=1,Lm=1,FeatureState=CXC4011254',{featureState:feat4011254});
+      add('SystemFunctions=1,Lm=1,FeatureState=CXC4012817',{featureState:feat4012817});
+
+      // SA 850 RedCap
+      sa850Cells.forEach(function(c){add('GNBCUCPFunction=1,TrafficSteering=1,TrStSaCellProfile='+c+',TrStSaCellProfileUeCfg=RedCap',{criterionBetterUeConfig:'10'});});
+      // NSA Mcfb
+      nsaMcfbCells.forEach(function(c){add('GNBCUCPFunction=1,Mcfb=1,McfbCellProfile='+c+',McfbCellProfileUeCfg=Base',{rsrpCellCandidate:'{threshold=-140}'});});
+
+      // ulHeavyUeDetect
+      ulTrueCells.forEach(function(c){add('ENodeBFunction=1,EUtranCellFDD='+c,{ulHeavyUeDetectEnabled:'true'});});
+      ulFalseCells.forEach(function(c){add('ENodeBFunction=1,EUtranCellFDD='+c,{ulHeavyUeDetectEnabled:'false'});});
+
+      // n077 csiRsConfig32P (only if AIR)
+      if(n077Cells.length&&feat4012817==='ACTIVATED'){
+        n077Cells.forEach(function(c){
+          add('GNBDUFunction=1,NRCellDU='+c,{'csiRsConfig32P':'{csiRsControl32Ports=EIGHT_TWO_N1AZ,i11Restriction="FFFFFFFF",i12Restriction="FF"}','dlMaxMuMimoLayers':'8','maxNoOfAdvancedDlMuMimoLayers':'16','ulMaxMuMimoLayers':'4','advancedDlSuMimoEnabled':'true'});
+          add('GNBDUFunction=1,NRCellDU='+c,{pdcchCapacityBoostEnabled:'true'});
+        });
+      }
+
+      // ReportConfigSearch
+      nonB30SearchCells.forEach(function(c){add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1,ReportConfigSearch=1',{a2OuterSearchThrRsrpOffset:'-6',a2OuterSearchThrRsrqOffset:'-20'});});
+      b30SearchCells.forEach(function(c){add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1,ReportConfigSearch=1',{a2OuterSearchThrRsrpOffset:'-2'});});
+      b14b17SearchCells.forEach(function(c){add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1,ReportConfigSearch=1',{a2OuterSearchThrRsrqOffset:'0'});});
+
+      // B29 new params
+      ulFalseCells.forEach(function(c){
+        add('ENodeBFunction=1,EUtranCellFDD='+c,{pZeroNominalPucchBr:'-116'});
+        add('ENodeBFunction=1,EUtranCellFDD='+c,{pZeroNominalPuschBr:'-80'});
+        add('ENodeBFunction=1,EUtranCellFDD='+c,{servOrPrioIFHoSetupBearer:'false',spifhoDedicatedReportConfig:'False'});
+      });
+
+      // B14 ReportConfigA5
+      ['ALPHA','BETA','GAMMA'].forEach(function(s){var c=firstCell('B14',s);if(c)add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1,ReportConfigA5=1',{a5Threshold1Rsrp:'-116',a5Threshold2Rsrp:'-112'});});
+
+      add('SystemFunctions=1,Lm=1,FeatureState=CXC4011808',{featureState:'ACTIVATED'});
+      if(!hasB30) add('SystemFunctions=1,Lm=1,FeatureState=CXC4010955',{featureState:'DEACTIVATED'});
+      if(isSA) add('SystemFunctions=1,Lm=1,FeatureState=CXC4012856',{featureState:'ACTIVATED'});
+
+      // a1a2SearchThresholdRsrq
+      a1a2Cells.forEach(function(c){add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1,ReportConfigSearch=1',{a1a2SearchThresholdRsrq:'-185'});});
+      searchB17Cells.forEach(function(c){add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1,ReportConfigSearch=1',{a1a2SearchThresholdRsrq:'-170'});});
+      searchB14Cells.forEach(function(c){add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1,ReportConfigSearch=1',{a1a2SearchThresholdRsrq:'-170'});});
+
+      // ReportConfigEUtraIFBestCell
+      ifBestCellB2466B5B30.forEach(function(c){add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1,ReportConfigEUtraIFBestCell=1',{a3RsrqOffset:'-30'});});
+      ifBestB17Cells.forEach(function(c){add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1,ReportConfigEUtraIFBestCell=1',{a3RsrqOffset:'-10'});});
+      ifBestB14Cells.forEach(function(c){add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1,ReportConfigEUtraIFBestCell=1',{a3RsrqOffset:'-60'});});
+      ifBestB29Cells.forEach(function(c){add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1,ReportConfigEUtraIFBestCell=1',{a3RsrqOffset:'0'});});
+
+      // systemInformationBlock3
+      sib3Cells.forEach(function(c){add('ENodeBFunction=1,EUtranCellFDD='+c,{systemInformationBlock3:'{sNonIntraSearchQ=12,threshServingLowQ=12}'});});
+
+      // SchedulingProfile TurboLive
+      add('GNBDUFunction=1,UeCC=1,SchedulingProfile=TurboLive',{relativePriority:'64'});
+
+      // UlDataSplit (always - V16 change from SA only)
+      add('GNBCUCPFunction=1,UeCC=1,UlDataSplit=Default_endc,UlDataSplitUeCfg=Base',{initialUlPrimaryPathMode:'SCG'});
+
+      // TurboLive MO create+set
+      addCreate('GNBDUFunction=1,DUQosModifier=1,DUModified5qi=7,DUModified5qiUeCfg=TurboLive',{
+        'dUModified5qiUeCfgId':'"TurboLive"','l4sCfgRef':'<empty>',
+        'logicalChannelRef':'"SubNetwork=ONRM_ROOT_MO,MeContext='+SITE_ID+',ManagedElement='+SITE_ID+',GNBDUFunction=1,UeCC=1,LogicalChannel=Default"',
+        'packetDelayBudget':'<empty>','prefUeGroupList':'<empty>','priorityLevel':'68',
+        'srHandlingRef':'"SubNetwork=ONRM_ROOT_MO,MeContext='+SITE_ID+',ManagedElement='+SITE_ID+',GNBDUFunction=1,UeCC=1,SrHandling=Default"',
+        'ueConfGroupList':'8','ueGroupList':'<empty>','userLabel':'"TurboLive"'
+      });
+      add('GNBDUFunction=1,DUQosModifier=1,DUModified5qi=7,DUModified5qiUeCfg=TurboLive',{
+        'l4sCfgRef':'<empty>',
+        'logicalChannelRef':'"SubNetwork=ONRM_ROOT_MO,MeContext='+SITE_ID+',ManagedElement='+SITE_ID+',GNBDUFunction=1,UeCC=1,LogicalChannel=Default"',
+        'packetDelayBudget':'<empty>','prefUeGroupList':'<empty>','priorityLevel':'68',
+        'srHandlingRef':'"SubNetwork=ONRM_ROOT_MO,MeContext='+SITE_ID+',ManagedElement='+SITE_ID+',GNBDUFunction=1,UeCC=1,SrHandling=Default"',
+        'ueConfGroupList':'8','ueGroupList':'<empty>','userLabel':'"TurboLive"'
+      });
+
+      // SA LB+MB FN_SA
+      if(isSA){
+        saLbMbCells.forEach(function(c){add('GNBCUCPFunction=1,TrafficSteering=1,TrStSaCellProfile='+c+',TrStSaCellProfileUeCfg=FN_SA',{rsrpPCellCandidateB2:'{threshold2EUtra=-116}'});});
+        saCBandCells.forEach(function(c){add('GNBCUCPFunction=1,TrafficSteering=1,TrStSaCellProfile='+c+',TrStSaCellProfileUeCfg=FN_SA',{rsrpPCellCandidateB2:'{threshold2EUtra=-140}'});});
+      }
+      // NSA all NR sectors FN_SA timeToTrigger=640
+      var nsaAllCells=[];
+      Object.keys(nsaSectors).forEach(function(band){['ALPHA','BETA','GAMMA'].forEach(function(s){(nsaSectors[band][s]||[]).forEach(function(c){nsaAllCells.push(c);});});});
+      nsaAllCells.forEach(function(c){add('GNBCUCPFunction=1,TrafficSteering=1,TrStSaCellProfile='+c+',TrStSaCellProfileUeCfg=FN_SA',{rsrpPCellCandidateB2:'{timeToTrigger=640}'});});
+
+      // hiPrioDetEnabled: only n077 ONLY (no 850/PCS/AWS)
+      if(onlyCBand) n077Cells.forEach(function(c){add('GNBCUCPFunction=1,NRCellCU='+c,{hiPrioDetEnabled:'False'});});
+      add('GNBCUCPFunction=1,TrafficSteering=1,TrStPSCellProfile=Default,TrStPSCellProfileUeCfg=Base',{hiPrioDetMeasurementTime:'5000',hiPrioDetStartTime:'2000',rsrpCandidateA5:'{threshold2=-156}'});
+      add('GNBCUCPFunction=1,UeMC=1,UeMCNrFreqRelProfile=Default,UeMCNrFreqRelProfileUeCfg=Base',{connModePrioPSCell:'7'});
+      if(hasCBand) n077Cells.forEach(function(c){add('GNBDUFunction=1,NRCellDU='+c,{pdcchSymbConfig:'ADAPT_MAX_2'});});
+      if(feat4012817==='ACTIVATED') add('GNBDUFunction=1,UeCC=1,UplinkComp=1,UplinkCompUeCfg=Base',{uplinkCompUeEnabled:'True'});
+
+      // ReportConfigA5UlTrig ALL LTE sectors
+      allLTECells.forEach(function(c){add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1,ReportConfigA5UlTrig=1',{a5Threshold2Rsrp:'-120'});});
+
+      // ReportConfigSCellA6 B17+B14 timeToTriggerA6:40 removed per V16
+
+      // SchedulingProfile TurboLive schedulingAlgorithm (new V16)
+      add('GNBDUFunction=1,UeCC=1,SchedulingProfile=TurboLive',{schedulingAlgorithm:'PRIORITIZED_RATE'});
+
+      // ── V1 ADDITIONS ──
+
+      // Create UeMobilityGroupDefinition=FN_SA (always)
+      addCreate('GNBCUCPFunction=1,UeGroupSelection=1,UeMobilityGroupDefinition=FN_SA',{
+        selectionCriteria:'"rfsp==1 || rfsp==2"',
+        ueMobilityGroupDefinitionId:'"FN_SA"',
+        ueMobilityGroupId:'"16"',
+        ueMobilityGroupPriority:'160'
+      });
+
+      // SA: all 5G sectors TrStSaCellProfile FN_SA bwTrigISHoTriggerQuantity
+      if(isSA){
+        var allSACells=[];
+        Object.keys(saSectors).forEach(function(band){['ALPHA','BETA','GAMMA'].forEach(function(s){(saSectors[band][s]||[]).forEach(function(c){allSACells.push(c);});});});
+        allSACells.forEach(function(c){add('GNBCUCPFunction=1,TrafficSteering=1,TrStSaCellProfile='+c+',TrStSaCellProfileUeCfg=FN_SA',{bwTrigISHoTriggerQuantity:'RSRP'});});
+
+        // SA all sectors criterionDlAbsoluteOffset etc (big block)
+        allSACells.forEach(function(c){add('GNBCUCPFunction=1,TrafficSteering=1,TrStSaCellProfile='+c+',TrStSaCellProfileUeCfg=FN_SA',{
+          criterionDlAbsoluteOffset:'5',dataAwareMobDlPktAgeThr:'0',dataAwareMobDlPktVolThr:'0',
+          mlcTriggerQuantity:'RSRP',
+          rsrpPCellCandidate:'{hysteresis=10,threshold2=-104,timeToTrigger=640}',
+          rsrpPCellCandidateAddTargEval:'NONE',
+          rsrpPCellCandidateB2:'{hysteresis=10,threshold1=-29,timeToTrigger=640}',
+          rsrpPCellCandidateB2AddTargEval:'NONE',
+          rsrpPCellCandidateB2PcOffset:'{powerClass=2,threshold1Offset=0}',
+          rsrpPCellCandidatePcOffset:'{powerClass=2,threshold2Offset=0}',
+          rsrpSCellCandidate:'{hysteresis=10,threshold2=-156,timeToTrigger=640}',
+          rsrqPCellCandidate:'{hysteresis=10,threshold2=-435,timeToTrigger=640}',
+          rsrqPCellCandidateAddTargEval:'NONE',
+          rsrqPCellCandidateB2:'{hysteresis=10,threshold1=-435,threshold2EUtra=-195,timeToTrigger=640}',
+          rsrqPCellCandidateB2AddTargEval:'NONE',
+          rsrqSCellCandidate:'{hysteresis=10,threshold2=-435,timeToTrigger=640}',
+          sinrPCellCandidate:'{hysteresis=10,threshold2=-230,timeToTrigger=640}',
+          sinrPCellCandidateAddTargEval:'NONE',
+          sinrPCellCandidateB2:'{hysteresis=10,threshold1=-230,threshold2EUtra=-230,timeToTrigger=640}',
+          sinrPCellCandidateB2AddTargEval:'NONE',
+          sinrSCellCandidate:'{hysteresis=10,threshold2=-230,timeToTrigger=640}',
+          t320:'180'
+        });});
+
+        // SA non-CBand (850/PCS/AWS) sectors aggregatedBwThreshold:25
+        var saNonCBandCells=[];
+        ['850','PCS','AWS'].forEach(function(band){['ALPHA','BETA','GAMMA'].forEach(function(s){(saSectors[band]||{})[s]&&(saSectors[band][s]).forEach(function(c){saNonCBandCells.push(c);});});});
+        if(saNonCBandCells.length){
+          saNonCBandCells.forEach(function(c){add('GNBCUCPFunction=1,TrafficSteering=1,TrStSaCellProfile='+c+',TrStSaCellProfileUeCfg=FN_SA',{
+            aggregatedBwThreshold:'25',bwTrigISHoEnabled:'True',criterionBetterUeConfig:'10',
+            dataAwareMobLowDlThpThr:'10000',dataAwareMobLowUlThpThr:'3000',
+            rsrpPCellCandidateB2:'{threshold2EUtra=-116}'
+          });});
+        }
+
+        // SA CBand (n077) sectors aggregatedBwThreshold:10
+        if(saCBandCells.length){
+          saCBandCells.forEach(function(c){add('GNBCUCPFunction=1,TrafficSteering=1,TrStSaCellProfile='+c+',TrStSaCellProfileUeCfg=FN_SA',{
+            aggregatedBwThreshold:'10',bwTrigISHoEnabled:'False',criterionBetterUeConfig:'100',
+            dataAwareMobLowDlThpThr:'0',dataAwareMobLowUlThpThr:'0',
+            mlcAllowedCellSetChangeAction:'HANDOVER',mlcPeriodicEnabled:'False',mlcPeriodicInterval:'15',
+            rsrpPCellCandidateB2:'{threshold2EUtra=-140}'
+          });});
+
+          // n077 SA bwDL <= 30 → mlcEnabled:True, > 30 → mlcEnabled:False
+          saCBandCells.forEach(function(c){
+            var bw=n077BwDLMap[c]||0;
+            if(bw<=30) add('GNBCUCPFunction=1,TrafficSteering=1,TrStSaCellProfile='+c+',TrStSaCellProfileUeCfg=FN_SA',{mlcEnabled:'True'});
+            else add('GNBCUCPFunction=1,TrafficSteering=1,TrStSaCellProfile='+c+',TrStSaCellProfileUeCfg=FN_SA',{mlcEnabled:'False'});
+          });
+        }
+
+        // SA LB+MB without n077 → mlcAllowedCellSetChangeAction:HANDOVER mlcEnabled:False
+        if(!hasCBand&&saNonCBandCells.length){
+          saNonCBandCells.forEach(function(c){add('GNBCUCPFunction=1,TrafficSteering=1,TrStSaCellProfile='+c+',TrStSaCellProfileUeCfg=FN_SA',{
+            mlcAllowedCellSetChangeAction:'HANDOVER',mlcEnabled:'False',mlcPeriodicEnabled:'False',mlcPeriodicInterval:'15'
+          });});
+        }
+        // SA LB+MB with n077 → mlcAllowedCellSetChangeAction:HO_AND_SCELL_RESELECTION mlcEnabled:True
+        if(hasCBand&&saNonCBandCells.length){
+          saNonCBandCells.forEach(function(c){add('GNBCUCPFunction=1,TrafficSteering=1,TrStSaCellProfile='+c+',TrStSaCellProfileUeCfg=FN_SA',{
+            mlcAllowedCellSetChangeAction:'HO_AND_SCELL_RESELECTION',mlcEnabled:'True',mlcPeriodicEnabled:'True',mlcPeriodicInterval:'30'
+          });});
+        }
+      }
+
+      // inhibitA2SearchConfig: B17+B29 → INHIBIT_A2SEARCH_RSRP
+      var b17b29Cells=[];
+      ['ALPHA','BETA','GAMMA'].forEach(function(s){b17b29Cells=b17b29Cells.concat(allCells('B17',s));});
+      if(secLTE['B29'])['ALPHA','BETA','GAMMA'].forEach(function(s){b17b29Cells=b17b29Cells.concat(allCells('B29',s));});
+      b17b29Cells.forEach(function(c){add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1,ReportConfigSearch=1',{inhibitA2SearchConfig:'INHIBIT_A2SEARCH_RSRP'});});
+
+      // B2/B4/B66/B5/B30 → NOT_INHIBIT
+      var otherSearchCells=[];
+      ['B2','B4','B66','B5','B30'].forEach(function(band){if(secLTE[band])['ALPHA','BETA','GAMMA'].forEach(function(s){otherSearchCells=otherSearchCells.concat(allCells(band,s));});});
+      otherSearchCells.forEach(function(c){add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1,ReportConfigSearch=1',{inhibitA2SearchConfig:'NOT_INHIBIT'});});
+
+      // B14 → INHIBIT_A2SEARCH_RSRQ
+      var b14AllCells=[];
+      ['ALPHA','BETA','GAMMA'].forEach(function(s){b14AllCells=b14AllCells.concat(allCells('B14',s));});
+      b14AllCells.forEach(function(c){add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1,ReportConfigSearch=1',{inhibitA2SearchConfig:'INHIBIT_A2SEARCH_RSRQ'});});
+
+      // B14 servOrPrioTriggeredIFHo:ARP
+      b14AllCells.forEach(function(c){add('ENodeBFunction=1,EUtranCellFDD='+c,{servOrPrioTriggeredIFHo:'ARP'});});
+
+      // B14 SubscriberGroupProfile create with cellTriggerList
+      if(b14CellIds.length){
+        addCreate('ENodeBFunction=1,SubscriberGroupProfile=1',{cellTriggerList:'['+b14CellIds.join(',')+']'});
+      }
+
+      // a1a2SearchThresholdRsrp: B14→-85, B30→-124, B2/B4/B66/B5/B17→-118
+      b14AllCells.forEach(function(c){add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1,ReportConfigSearch=1',{a1a2SearchThresholdRsrp:'-85'});});
+      if(secLTE['B30'])['ALPHA','BETA','GAMMA'].forEach(function(s){allCells('B30',s).forEach(function(c){add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1,ReportConfigSearch=1',{a1a2SearchThresholdRsrp:'-124'});});});
+      var otherRsrpCells=[];
+      ['B2','B4','B66','B5','B17'].forEach(function(band){if(secLTE[band])['ALPHA','BETA','GAMMA'].forEach(function(s){otherRsrpCells=otherRsrpCells.concat(allCells(band,s));});});
+      otherRsrpCells.forEach(function(c){add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1,ReportConfigSearch=1',{a1a2SearchThresholdRsrp:'-118'});});
+
+      // CXC4012816: if AIR6419/6449/6472
+      if(feat4012817==='ACTIVATED') add('SystemFunctions=1,Lm=1,FeatureState=CXC4012816',{featureState:'ACTIVATED'});
+
+      // NetworkLicensing euft (always)
+      add('NodeSupport=1,LicenseSupport=1,NetworkLicensing=1',{euft:'<empty>'});
+
+      // ALL LTE sectors loopingEndcProtectionEnabled + restartBufMonAtMobility
+      allLTECells.forEach(function(c){add('ENodeBFunction=1,EUtranCellFDD='+c,{loopingEndcProtectionEnabled:'True',restartBufMonAtMobility:'True'});});
+
+      // ALL LTE sectors endcSetupUlBsVolThr + endcSetupDlBsVolThr
+      allLTECells.forEach(function(c){add('ENodeBFunction=1,EUtranCellFDD='+c,{endcSetupUlBsVolThr:'10000'});});
+      allLTECells.forEach(function(c){add('ENodeBFunction=1,EUtranCellFDD='+c,{endcSetupDlPktVolThr:'50'});});
+
+      // If site has 5G sectors: ReportConfigA5EndcHo=1 for ALL LTE sectors
+      if(Object.keys(g5).length>0){
+        allLTECells.forEach(function(c){add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1,ReportConfigA5EndcHo=1',{reportAmountA5:'8'});});
+      }
+
+      // ── V2 ADDITIONS ──
+
+      // interFreqHoHigherPrioEndc: B17→True, non-B17→False
+      var b17AllCells=[];
+      ['ALPHA','BETA','GAMMA'].forEach(function(s){b17AllCells=b17AllCells.concat(allCells('B17',s));});
+      b17AllCells.forEach(function(c){add('ENodeBFunction=1,EUtranCellFDD='+c,{interFreqHoHigherPrioEndc:'True'});});
+      var nonB17AllCells=allLTECells.filter(function(c){return b17AllCells.indexOf(c)<0;});
+      nonB17AllCells.forEach(function(c){add('ENodeBFunction=1,EUtranCellFDD='+c,{interFreqHoHigherPrioEndc:'False'});});
+
+      // ReportConfigB1GUtra: if 5G present→all LTE MS_480, if no 5G→all LTE MS_120
+      var has5G=Object.keys(g5).length>0;
+      if(has5G){
+        allLTECells.forEach(function(c){add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1,ReportConfigB1GUtra=1',{reportIntervalB1:'MS_480'});});
+      } else {
+        allLTECells.forEach(function(c){add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1,ReportConfigB1GUtra=1',{reportIntervalB1:'MS_120'});});
+      }
+
+      // CXC4012519, CXC4012601 (always)
+      add('SystemFunctions=1,Lm=1,FeatureState=CXC4012519',{featureState:'ACTIVATED'});
+      add('SystemFunctions=1,Lm=1,FeatureState=CXC4012601',{featureState:'ACTIVATED'});
+
+      // McpcPSCellProfile: all 5G sectors
+      var allNRCells=[];
+      Object.keys(g5).forEach(function(band){['ALPHA','BETA','GAMMA'].forEach(function(s){(g5[band][s]||[]).forEach(function(c){allNRCells.push(c);});});});
+      allNRCells.forEach(function(c){add('GNBCUCPFunction=1,Mcpc=1,McpcPSCellProfile='+c+',McpcPSCellProfileUeCfg=Base',{lowHighFreqPrioClassification:'6'});});
+
+      // QciProfileOperatorDefined (always)
+      add('ENodeBFunction=1,QciTable=default,QciProfileOperatorDefined=qci199',{dataFwdPerQciEnabled:'true'});
+
+      // CXC4012082 (always)
+      add('SystemFunctions=1,Lm=1,FeatureState=CXC4012082',{featureState:'ACTIVATED'});
+
+      // CATm commands - always generate (no condition)
+      add('ENodeBFunction=1,Paging=1',{pagingAssistDataSupportBr:'ASSISTANCE_DATA_CELL_ID'});
+      ['CXC4012302','CXC4012320','CXC4012323','CXC4012359','CXC4012425','CXC4012539','CXC4012545','CXC4012572','CXC4012608'].forEach(function(cxc){
+        add('SystemFunctions=1,Lm=1,FeatureState='+cxc,{featureState:'ACTIVATED'});
+      });
+      add('ENodeBFunction=1,Rcs=1',{raiReleaseDelayTimerBr:'5'});
+
+      // SA LB+MB (850/PCS/AWS) TrStSaCellProfile RedCap create+set
+      if(isSA&&saLbMbCells.length){
+        saLbMbCells.forEach(function(c){
+          addCreate('GNBCUCPFunction=1,TrafficSteering=1,TrStSaCellProfile='+c+',TrStSaCellProfileUeCfg=RedCap',{criterionBetterUeConfig:'10'});
+          add('GNBCUCPFunction=1,TrafficSteering=1,TrStSaCellProfile='+c+',TrStSaCellProfileUeCfg=RedCap',{criterionBetterUeConfig:'10'});
+        });
+      }
+
+      // McpcPSCellProfile LB+MB only (850/PCS/AWS, not n077)
+      var lbMbNRCells=[];
+      ['850','PCS','AWS'].forEach(function(band){['ALPHA','BETA','GAMMA'].forEach(function(s){(g5[band]||{})[s]&&g5[band][s].forEach(function(c){lbMbNRCells.push(c);});});});
+      lbMbNRCells.forEach(function(c){add('GNBCUCPFunction=1,Mcpc=1,McpcPSCellProfile='+c+',McpcPSCellProfileUeCfg=Base',{rsrpSearchZone:'{threshold=-113}'});});
+
+      // CXC4012704: only if B17 present AND B5 with ulChannelBandwidth=5MHz
+      if(secLTE['B17']&&hasB5_5MHz){
+        add('SystemFunctions=1,Lm=1,FeatureState=CXC4012704',{featureState:'ACTIVATED'});
+      }
+
+      var ndsOut=out.join('\n').replace(/\n{3,}/g,'\n\n').trim()+'\n';
+      await addDl(ndsOut,SITE_ID+'_NDS_DELTA.txt','NDS Delta Script');
+
+      // cmedit file
+      var cmeditOut='cmedit set '+SITE_ID+' EUtranFreqRelation cellReselectionPriorityBr=7\ncmedit set '+SITE_ID+' EUtranCellRelation qOffsetCellEUtran=0\n';
+      await addDl(cmeditOut,SITE_ID+'_cmedit.txt','cmedit Commands');
+    }
+
+    // FGA DELTA
+    if(sel.fga){
+      var gen=fgaGen==='auto'?autoGen:(fgaGen==='G2'?'G2':'G3G4');
+      var tpl=document.getElementById(gen==='G2'?'TPL_FGA_G2':'TPL_FGA_G3G4').textContent.trim();
+      var ALPHA=firstCell('B17','ALPHA')||'',BETA=firstCell('B17','BETA')||'',GAMMA=firstCell('B17','GAMMA')||'';
+      var lowBand=[];
+      ['B17','B12','B5'].forEach(function(band){if(secLTE[band])['ALPHA','BETA','GAMMA'].forEach(function(s){var c=firstCell(band,s);if(c)lowBand.push(c);});});
+      var blocks=parseBlocks(tpl);
+      // Replace placeholders
+      blocks=blocks.map(function(b){return{t:b.t,c:b.c.split('XXSITEIDXX').join(SITE_ID).split('XXALPHASECTORXX').join(ALPHA).split('XXBETASECTORXX').join(BETA).split('XXGAMMASECTORXX').join(GAMMA)};});
+      // Remove blocks where any EUtranCellFDD value is empty (e.g. EUtranCellFDD=" or EUtranCellFDD=,)
+      blocks=blocks.filter(function(b){
+        if(b.t!=='set_block') return true;
+        // Find the FDN line and extract EUtranCellFDD value
+        var fdnLine=b.c.split('\n').find(function(l){return l.indexOf('EUtranCellFDD=')>=0;});
+        if(!fdnLine) return true;
+        var after=fdnLine.split('EUtranCellFDD=')[1]||'';
+        // Value is empty if next char is " followed by , or "
+        // e.g. EUtranCellFDD=" -> empty, EUtranCellFDD=", -> empty, EUtranCellFDD=,U -> empty
+        var cellVal=after.replace(/^"/,'').split('"')[0].split(',')[0].trim();
+        return cellVal.length>0;
+      });
+      if(lowBand.length)blocks=expandBlocks(blocks,'XXLowBandSectors',lowBand);
+      else blocks=removeBlocks(blocks,'XXLowBandSectors');
+      var fgaOut=rebuild(blocks).replace(/\n{3,}/g,'\n\n').trim()+'\n';
+      await addDl(fgaOut,SITE_ID+'_FGA_DELTA.txt','FGA Delta Script ('+gen+')');
+    }
+
+    // ══ V3 — STANDALONE INDEPENDENT TEMPLATE ══
+    if(sel.v3){
+      var v3out=[];
+      var v3add=function(fdnSuffix,params){
+        v3out.push('set');
+        v3out.push('FDN : "SubNetwork=ONRM_ROOT_MO,MeContext='+SITE_ID+',ManagedElement='+SITE_ID+','+fdnSuffix+'"');
+        Object.keys(params).forEach(function(k){v3out.push(k+' : '+params[k]);});
+        v3out.push('');
+      };
+      var v3addCreate=function(fdnSuffix,params){
+        v3out.push('create');
+        v3out.push('FDN : "SubNetwork=ONRM_ROOT_MO,MeContext='+SITE_ID+',ManagedElement='+SITE_ID+','+fdnSuffix+'"');
+        Object.keys(params).forEach(function(k){v3out.push(k+' : '+params[k]);});
+        v3out.push('');
+      };
+
+      // B29 sectors (all cells)
+      var v3B29Cells=[];
+      if(secLTE['B29'])['ALPHA','BETA','GAMMA'].forEach(function(s){v3B29Cells=v3B29Cells.concat(allCells('B29',s));});
+      // B14 sectors (all cells)
+      var v3B14Cells=[];
+      if(secLTE['B14'])['ALPHA','BETA','GAMMA'].forEach(function(s){v3B14Cells=v3B14Cells.concat(allCells('B14',s));});
+      // B17 sectors (all cells)
+      var v3B17Cells=[];
+      if(secLTE['B17'])['ALPHA','BETA','GAMMA'].forEach(function(s){v3B17Cells=v3B17Cells.concat(allCells('B17',s));});
+      // B2/B4/B66 5MHz check (dlChannelBandwidth=5000)
+      var v3Has2466_5MHz=false;
+      ['B2','B4','B66'].forEach(function(band){if(secLTE[band])['ALPHA','BETA','GAMMA'].forEach(function(s){allCells(band,s).forEach(function(c){if(cellBwMap[c]===5000)v3Has2466_5MHz=true;});});});
+      // MB5 sectors: any sector with dlChannelBandwidth=5000 (all bands)
+      var v3MB5Cells=[];
+      Object.keys(secLTE).forEach(function(band){if(band.indexOf('_first')>=0)return;['ALPHA','BETA','GAMMA'].forEach(function(s){allCells(band,s).forEach(function(c){if(cellBwMap[c]===5000)v3MB5Cells.push(c);});});});
+      // B2/B4/B66 5MHz specific cells
+      var v3_2466_5MHzCells=[];
+      ['B2','B4','B66'].forEach(function(band){if(secLTE[band])['ALPHA','BETA','GAMMA'].forEach(function(s){allCells(band,s).forEach(function(c){if(cellBwMap[c]===5000)v3_2466_5MHzCells.push(c);});});});
+      // B14+B17+B29 combined
+      var v3B14B17B29Cells=v3B14Cells.concat(v3B17Cells).concat(v3B29Cells);
+      // Other sectors: B2/B4/B66/B5/B30 with >5MHz
+      var v3OtherCells=[];
+      ['B2','B4','B66','B5','B30'].forEach(function(band){if(secLTE[band])['ALPHA','BETA','GAMMA'].forEach(function(s){allCells(band,s).forEach(function(c){if(cellBwMap[c]!==5000)v3OtherCells.push(c);});});});
+      // B30 WCS_Slim vs non-WCS_Slim (check eUTRA operating band text for "WCS" or "Slim")
+      var v3B30Slim=[],v3B30NonSlim=[];
+      if(secLTE['B30'])['ALPHA','BETA','GAMMA'].forEach(function(s){
+        allCells('B30',s).forEach(function(c){
+          var bandTxt=(b30BandTextMap[c]||'').toUpperCase();
+          if(bandTxt.indexOf('WCS')>=0&&bandTxt.indexOf('SLIM')>=0) v3B30Slim.push(c);
+          else v3B30NonSlim.push(c);
+        });
+      });
+      // B17 + non-B17
+      var v3NonB17Cells=allLTECells.filter(function(c){return v3B17Cells.indexOf(c)<0;});
+
+      // ── V3 COMMANDS ──
+      v3B29Cells.forEach(function(c){v3add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1,ReportConfigSCellA1A2=1',{a1a2ThresholdRsrq:'-165'});});
+
+      // B17 sectors always included regardless of bandwidth
+      v3B17Cells.forEach(function(c){v3add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1,ReportConfigSearch=1',{a1a2SearchThresholdRsrq:'-170'});});
+      // B2/B4/B66 with 5MHz - independent inclusion
+      v3_2466_5MHzCells.forEach(function(c){v3add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1,ReportConfigSearch=1',{a1a2SearchThresholdRsrq:'-170'});});
+      v3B14Cells.forEach(function(c){v3add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1,ReportConfigSearch=1',{a1a2SearchThresholdRsrq:'-150'});});
+
+      // B17 sectors always included regardless of bandwidth
+      v3B17Cells.forEach(function(c){v3add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1,ReportConfigSearch=1',{a2OuterSearchThrRsrpOffset:'0'});});
+
+      v3B29Cells.forEach(function(c){v3add('ENodeBFunction=1,EUtranCellFDD='+c,{endcSetupUlBsVolThr:'0'});});
+      v3B29Cells.forEach(function(c){v3add('ENodeBFunction=1,EUtranCellFDD='+c,{loopingEndcProtectionEnabled:'False'});});
+      v3B29Cells.forEach(function(c){v3add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1,ReportConfigA5EndcHo=1',{reportAmountA5:'0'});});
+      v3B29Cells.forEach(function(c){v3add('ENodeBFunction=1,EUtranCellFDD='+c,{restartBufMonAtMobility:'false'});});
+
+      v3_2466_5MHzCells.forEach(function(c){v3add('ENodeBFunction=1,EUtranCellFDD='+c,{systemInformationBlock3:'{sNonIntraSearchQ=17,threshServingLowQ=17}'});});
+
+      if(v3_2466_5MHzCells.length){
+        v3_2466_5MHzCells.forEach(function(c){v3add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1,ReportConfigSearch=1',{a2OuterSearchThrRsrqOffset:'-20'});});
+      }
+      v3B14B17B29Cells.forEach(function(c){v3add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1,ReportConfigSearch=1',{a2OuterSearchThrRsrqOffset:'0'});});
+      v3OtherCells.forEach(function(c){v3add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1,ReportConfigSearch=1',{a2OuterSearchThrRsrqOffset:'-10'});});
+
+      if(v3_2466_5MHzCells.length){
+        v3_2466_5MHzCells.forEach(function(c){v3add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1,ReportConfigEUtraIFBestCell=1',{a3RsrqOffset:'-10'});});
+      }
+
+      v3B29Cells.forEach(function(c){v3add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1,ReportConfigSCellA1A2=1',{hysteresisA1A2Rsrp:'10',hysteresisA1A2Rsrq:'15',timeToTriggerA2:'40',triggerQuantityA1A2:'RSRP'});});
+      v3B29Cells.forEach(function(c){v3add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1,ReportConfigSCellA6=1',{timeToTriggerA6:'40'});});
+
+      v3B30NonSlim.forEach(function(c){v3add('ENodeBFunction=1,EUtranCellFDD='+c,{
+        ailgRef:'"SubNetwork=ONRM_ROOT_MO,MeContext='+SITE_ID+',ManagedElement='+SITE_ID+',ENodeBFunction=1,AirIfLoadProfile=4"',
+        dlCchAndRefSigBlockActive:'false',dlCchAndRefSigBoost:'false',dlConfigurableFrequencyStart:'0',dlFrequencyAllocationProportion:'100'
+      });});
+      v3B30NonSlim.forEach(function(c){v3add('ENodeBFunction=1,EUtranCellFDD='+c,{dlInterferenceManagementActive:'true'});});
+
+      v3B30Slim.forEach(function(c){v3add('ENodeBFunction=1,EUtranCellFDD='+c,{
+        ailgRef:'"SubNetwork=ONRM_ROOT_MO,MeContext='+SITE_ID+',ManagedElement='+SITE_ID+',ENodeBFunction=1,AirIfLoadProfile=WCS_Slim"',
+        dlCchAndRefSigBlockActive:'True',dlCchAndRefSigBoost:'True',dlConfigurableFrequencyStart:'37',dlFrequencyAllocationProportion:'64',dlInterferenceManagementActive:'False'
+      });});
+
+      v3B17Cells.forEach(function(c){v3add('ENodeBFunction=1,EUtranCellFDD='+c,{interFreqHoHigherPrioEndc:'True',interFreqHoHigherPrioSnRel:'True'});});
+      v3NonB17Cells.forEach(function(c){v3add('ENodeBFunction=1,EUtranCellFDD='+c,{interFreqHoHigherPrioEndc:'False',interFreqHoHigherPrioSnRel:'False'});});
+
+      var v3Has5G=Object.keys(g5).length>0;
+      // If 5G present: thresholds 30/30/200
+      if(v3Has5G){
+        v3add('ENodeBFunction=1,CarrierAggregationFunction=1',{dcSCellActDeactDataThres:'30',dcSCellActDeactDataThresHyst:'30',dcSCellDeactDelayTimer:'200'});
+      } else {
+        // If no 5G present: thresholds 100/90/50
+        v3add('ENodeBFunction=1,CarrierAggregationFunction=1',{dcSCellActDeactDataThres:'100',dcSCellActDeactDataThresHyst:'90',dcSCellDeactDelayTimer:'50'});
+      }
+
+      if(secLTE['B17']){
+        v3add('SystemFunctions=1,Lm=1,FeatureState=CXC4012704',{featureState:'ACTIVATED'});
+      }
+
+      v3addCreate('GNBCUCPFunction=1,UeGroupSelection=1,UeServiceGroupDefinition=TurboLive',{
+        ueServiceGroupId:'"8"',ueServiceGroupPriority:'80',selectionCriteria:'"(spid==19&&qci==7)||(rfsp==19&&5qi==7)"'
+      });
+      v3add('GNBCUCPFunction=1,UeGroupSelection=1,UeServiceGroupDefinition=TurboLive',{
+        selectionCriteria:'"(spid==19&&qci==7)||(rfsp==19&&5qi==7)"',ueServiceGroupId:'"8"',ueServiceGroupPriority:'80'
+      });
+
+      if(v3B14Cells.length){
+        v3add('ENodeBFunction=1,AdmissionControl=1',{dlAdmDifferentiationThr:'949'});
+        v3add('ENodeBFunction=1,PtmFunction=1',{ptmEnabled:'True'});
+      } else {
+        v3add('ENodeBFunction=1,PtmFunction=1',{ptmEnabled:'False'});
+      }
+
+      var v3Out=v3out.join('\n').replace(/\n{3,}/g,'\n\n').trim()+'\n';
+      await addDl(v3Out,SITE_ID+'_NDS_DELTA_V3.txt','NDS Delta V3 Script (Standalone)');
+    }
+
+    // ══ V4 — STANDALONE INDEPENDENT TEMPLATE ══
+    if(sel.v4){
+      var v4out=[];
+      var v4add=function(fdnSuffix,params){
+        v4out.push('set');
+        v4out.push('FDN : "SubNetwork=ONRM_ROOT_MO,MeContext='+SITE_ID+',ManagedElement='+SITE_ID+','+fdnSuffix+'"');
+        Object.keys(params).forEach(function(k){v4out.push(k+' : '+params[k]);});
+        v4out.push('');
+      };
+
+      // B17 sectors (all cells)
+      var v4B17Cells=[];
+      if(secLTE['B17'])['ALPHA','BETA','GAMMA'].forEach(function(s){v4B17Cells=v4B17Cells.concat(allCells('B17',s));});
+      // B14 sectors (all cells)
+      var v4B14Cells=[];
+      if(secLTE['B14'])['ALPHA','BETA','GAMMA'].forEach(function(s){v4B14Cells=v4B14Cells.concat(allCells('B14',s));});
+      // All LTE sectors (reuse global allLTECells)
+      // Others = all LTE except B14 and B17
+      var v4OthersExclB14B17=allLTECells.filter(function(c){return v4B17Cells.indexOf(c)<0&&v4B14Cells.indexOf(c)<0;});
+      // Others = all LTE except B17 only
+      var v4OthersExclB17=allLTECells.filter(function(c){return v4B17Cells.indexOf(c)<0;});
+
+      // ── V4 COMMANDS ──
+
+      // B17: ReportConfigA5Spifho
+      v4B17Cells.forEach(function(c){v4add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1,ReportConfigA5Spifho=1',{a5Threshold2Rsrp:'-115',a5Threshold2Rsrq:'-150',timeToTriggerA5:'640'});});
+
+      // B14: ReportConfigA5Spifho
+      v4B14Cells.forEach(function(c){v4add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1,ReportConfigA5Spifho=1',{a5Threshold2Rsrp:'-116',a5Threshold2Rsrq:'-160',timeToTriggerA5:'40'});});
+
+      // Others (excl B14, B17): ReportConfigA5Spifho
+      v4OthersExclB14B17.forEach(function(c){v4add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1,ReportConfigA5Spifho=1',{a5Threshold2Rsrp:'-110',a5Threshold2Rsrq:'-150',timeToTriggerA5:'80'});});
+
+      // CXC4011255: only on non-high-capacity sites
+      if(!isHiCapSite){
+        v4add('SystemFunctions=1,Lm=1,FeatureState=CXC4011255',{featureState:'ACTIVATED'});
+      }
+
+      // B17: ReportConfigA1A2HigherPrio
+      v4B17Cells.forEach(function(c){v4add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1,ReportConfigA1A2HigherPrio=1',{thresholdRsrp:'-104'});});
+
+      // B17: ReportConfigA5InterFreqHigherPrio
+      v4B17Cells.forEach(function(c){v4add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1,ReportConfigA5InterFreqHigherPrio=1',{a5Threshold2Rsrp:'-115',a5Threshold2Rsrq:'-150'});});
+
+      // Others (excl B17 only): ReportConfigA1A2HigherPrio
+      v4OthersExclB17.forEach(function(c){v4add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1,ReportConfigA1A2HigherPrio=1',{thresholdRsrp:'-126'});});
+
+      // Others (excl B17 only): ReportConfigA5InterFreqHigherPrio
+      v4OthersExclB17.forEach(function(c){v4add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1,ReportConfigA5InterFreqHigherPrio=1',{a5Threshold2Rsrp:'-140',a5Threshold2Rsrq:'-195'});});
+
+      var v4Out=v4out.join('\n').replace(/\n{3,}/g,'\n\n').trim()+'\n';
+      await addDl(v4Out,SITE_ID+'_NDS_DELTA_V4.txt','NDS Delta V4 Script (Standalone)');
+    }
+
+    // ══ V5 — STANDALONE INDEPENDENT TEMPLATE ══
+    if(sel.v5){
+      var v5out=[];
+      var v5add=function(fdnSuffix,params){
+        v5out.push('set');
+        v5out.push('FDN : "SubNetwork=ONRM_ROOT_MO,MeContext='+SITE_ID+',ManagedElement='+SITE_ID+','+fdnSuffix+'"');
+        Object.keys(params).forEach(function(k){v5out.push(k+' : '+params[k]);});
+        v5out.push('');
+      };
+
+      // SA NR_FDD (850/PCS/AWS only, no n077)
+      var v5SACells=[];
+      ['850','PCS','AWS'].forEach(function(band){['ALPHA','BETA','GAMMA'].forEach(function(s){((saSectors[band]||{})[s]||[]).forEach(function(c){v5SACells.push(c);});});});
+
+      // NSA NR_FDD (850/PCS/AWS only, no n077)
+      var v5NSACells=[];
+      ['850','PCS','AWS'].forEach(function(band){['ALPHA','BETA','GAMMA'].forEach(function(s){((nsaSectors[band]||{})[s]||[]).forEach(function(c){v5NSACells.push(c);});});});
+
+      // All NR_FDD (850/PCS/AWS) regardless of SA/NSA
+      var v5AllNRFDDCells=[];
+      ['850','PCS','AWS'].forEach(function(band){['ALPHA','BETA','GAMMA'].forEach(function(s){(g5[band]||{})[s]&&g5[band][s].forEach(function(c){v5AllNRFDDCells.push(c);});});});
+
+      // ── V5 COMMANDS ──
+
+      // SA NRCellCU sNonIntraSearchQ:1
+      v5SACells.forEach(function(c){v5add('GNBCUCPFunction=1,NRCellCU='+c,{sNonIntraSearchQ:'1'});});
+
+      // NSA NRCellCU sNonIntraSearchQ:2
+      v5NSACells.forEach(function(c){v5add('GNBCUCPFunction=1,NRCellCU='+c,{sNonIntraSearchQ:'2'});});
+
+      // All NR_FDD McpcPCellProfile rsrpCritical
+      v5AllNRFDDCells.forEach(function(c){v5add('GNBCUCPFunction=1,Mcpc=1,McpcPCellProfile='+c+',McpcPCellProfileUeCfg=Base',{rsrpCritical:'{threshold=-115}'});});
+
+      // SA site: CallQueuingProfile PRIORITIZED_ONLY (based on overall site SA/NSA status, not restricted to specific bands)
+      var v5SiteIsSA=Object.keys(saSectors).length>0;
+      var v5SiteIsNSA=Object.keys(nsaSectors).length>0;
+      if(v5SiteIsSA){
+        v5add('GNBDUFunction=1,AdmissionControl=1,CallQueuing=1,CallQueuingProfile=Default',{queueRrcRequestMode:'PRIORITIZED_ONLY'});
+      }
+      // NSA site: CallQueuingProfile DISABLED
+      if(v5SiteIsNSA){
+        v5add('GNBDUFunction=1,AdmissionControl=1,CallQueuing=1,CallQueuingProfile=Default',{queueRrcRequestMode:'DISABLED'});
+      }
+
+      var v5Out=v5out.join('\n').replace(/\n{3,}/g,'\n\n').trim()+'\n';
+      await addDl(v5Out,SITE_ID+'_NDS_DELTA_V5.txt','NDS Delta V5 Script (Standalone)');
+    }
+
+    // ══ V6 — STANDALONE INDEPENDENT TEMPLATE ══
+    if(sel.v6){
+      var v6out=[];
+      var v6add=function(fdnSuffix,params){
+        v6out.push('set');
+        v6out.push('FDN : "SubNetwork=ONRM_ROOT_MO,MeContext='+SITE_ID+',ManagedElement='+SITE_ID+','+fdnSuffix+'"');
+        Object.keys(params).forEach(function(k){v6out.push(k+' : '+params[k]);});
+        v6out.push('');
+      };
+      var v6addCreate=function(fdnSuffix,params){
+        v6out.push('create');
+        v6out.push('FDN : "SubNetwork=ONRM_ROOT_MO,MeContext='+SITE_ID+',ManagedElement='+SITE_ID+','+fdnSuffix+'"');
+        Object.keys(params).forEach(function(k){v6out.push(k+' : '+params[k]);});
+        v6out.push('');
+      };
+
+      // B14 present check
+      var v6HasB14=!!(secLTE['B14']);
+
+      // SA site with 850/PCS/AWS present (ignore if SA has only n077, no LB/MB)
+      var v6SALbMbCells=[];
+      ['850','PCS','AWS'].forEach(function(band){['ALPHA','BETA','GAMMA'].forEach(function(s){((saSectors[band]||{})[s]||[]).forEach(function(c){v6SALbMbCells.push(c);});});});
+      var v6SAHasLbMb=v6SALbMbCells.length>0;
+
+      // SA site check (any SA sector present)
+      var v6IsSA=Object.keys(saSectors).length>0;
+
+      // ── V6 COMMANDS ──
+
+      // PtmFunction: B14 present → True, B14 absent → False
+      if(v6HasB14){
+        v6add('ENodeBFunction=1,PtmFunction=1',{ptmEnabled:'True'});
+      } else {
+        v6add('ENodeBFunction=1,PtmFunction=1',{ptmEnabled:'False'});
+      }
+
+      // RedCap UeMobilityGroupDefinition: SA + 850/PCS/AWS present
+      if(v6SAHasLbMb){
+        v6addCreate('GNBCUCPFunction=1,UeGroupSelection=1,UeMobilityGroupDefinition=RedCap',{ueMobilityGroupDefinitionId:'RedCap',ueMobilityGroupId:'3',ueMobilityGroupPriority:'10'});
+        v6add('GNBCUCPFunction=1,UeGroupSelection=1,UeMobilityGroupDefinition=RedCap',{selectionCriteria:'"redCapUe==1"'});
+      }
+
+      // CXC4012865, CXC4012872: SA site
+      if(v6IsSA){
+        v6add('SystemFunctions=1,Lm=1,FeatureState=CXC4012865',{featureState:'ACTIVATED'});
+        v6add('SystemFunctions=1,Lm=1,FeatureState=CXC4012872',{featureState:'ACTIVATED'});
+      }
+
+      var v6Out=v6out.join('\n').replace(/\n{3,}/g,'\n\n').trim()+'\n';
+      await addDl(v6Out,SITE_ID+'_NDS_DELTA_V6.txt','NDS Delta V6 Script (Standalone)');
+    }
+
+    // ══ V7 — STANDALONE INDEPENDENT TEMPLATE ══
+    if(sel.v7){
+      var v7out=[];
+      var v7add=function(fdnSuffix,params){
+        v7out.push('set');
+        v7out.push('FDN : "SubNetwork=ONRM_ROOT_MO,MeContext='+SITE_ID+',ManagedElement='+SITE_ID+','+fdnSuffix+'"');
+        Object.keys(params).forEach(function(k){v7out.push(k+' : '+params[k]);});
+        v7out.push('');
+      };
+
+      // B17 sectors (always included regardless of bandwidth - per earlier correction)
+      var v7B17Cells=[];
+      if(secLTE['B17'])['ALPHA','BETA','GAMMA'].forEach(function(s){v7B17Cells=v7B17Cells.concat(allCells('B17',s));});
+      // B2/B4/B66 with 5MHz - independent inclusion
+      var v7_2466_5MHzCells=[];
+      ['B2','B4','B66'].forEach(function(band){if(secLTE[band])['ALPHA','BETA','GAMMA'].forEach(function(s){allCells(band,s).forEach(function(c){if(cellBwMap[c]===5000)v7_2466_5MHzCells.push(c);});});});
+      // B2/B4/B66 with >=10MHz
+      var v7_2466_10Cells=[];
+      ['B2','B4','B66'].forEach(function(band){if(secLTE[band])['ALPHA','BETA','GAMMA'].forEach(function(s){allCells(band,s).forEach(function(c){if(cellBwMap[c]>=10000)v7_2466_10Cells.push(c);});});});
+      // B30 sectors (all cells)
+      var v7B30Cells=[];
+      if(secLTE['B30'])['ALPHA','BETA','GAMMA'].forEach(function(s){v7B30Cells=v7B30Cells.concat(allCells('B30',s));});
+      // All sectors except B29
+      var v7ExclB29Cells=allLTECells.filter(function(c){
+        var isB29=false;
+        if(secLTE['B29'])['ALPHA','BETA','GAMMA'].forEach(function(s){if(allCells('B29',s).indexOf(c)>=0)isB29=true;});
+        return !isB29;
+      });
+
+      // ── V7 COMMANDS ──
+
+      // B17 (always) + B2/B4/B66 5MHz (independent): a2OuterSearchThrRsrpOffset:0
+      v7B17Cells.forEach(function(c){v7add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1,ReportConfigSearch=1',{a2OuterSearchThrRsrpOffset:'0'});});
+      v7_2466_5MHzCells.forEach(function(c){v7add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1,ReportConfigSearch=1',{a2OuterSearchThrRsrpOffset:'0'});});
+
+      // B2/B4/B66 >=10MHz: a2OuterSearchThrRsrpOffset:-6
+      v7_2466_10Cells.forEach(function(c){v7add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1,ReportConfigSearch=1',{a2OuterSearchThrRsrpOffset:'-6'});});
+
+      // B30: a2OuterSearchThrRsrpOffset:-2
+      v7B30Cells.forEach(function(c){v7add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1,ReportConfigSearch=1',{a2OuterSearchThrRsrpOffset:'-2'});});
+
+      // All except B29: ReportConfigSCellA1A2
+      v7ExclB29Cells.forEach(function(c){v7add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1,ReportConfigSCellA1A2=1',{a1a2ThresholdRsrq:'-195',hysteresisA1A2Rsrp:'40',hysteresisA1A2Rsrq:'0',timeToTriggerA2:'1024',triggerQuantityA1A2:'RSRQ'});});
+      // All except B29: ReportConfigSCellA6
+      v7ExclB29Cells.forEach(function(c){v7add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1,ReportConfigSCellA6=1',{timeToTriggerA6:'1024'});});
+
+      // All except B29: loopingEndcProtectionEnabled + restartBufMonAtMobility
+      v7ExclB29Cells.forEach(function(c){v7add('ENodeBFunction=1,EUtranCellFDD='+c,{loopingEndcProtectionEnabled:'True',restartBufMonAtMobility:'True'});});
+
+      // TurboLive SchedulingProfile: non-DAS → RESOURCE_FAIR, DAS → PRIORITIZED_RATE
+      if(!isDAS){
+        v7add('GNBDUFunction=1,UeCC=1,SchedulingProfile=TurboLive',{schedulingAlgorithm:'RESOURCE_FAIR'});
+      } else {
+        v7add('GNBDUFunction=1,UeCC=1,SchedulingProfile=TurboLive',{schedulingAlgorithm:'PRIORITIZED_RATE'});
+      }
+
+      var v7Out=v7out.join('\n').replace(/\n{3,}/g,'\n\n').trim()+'\n';
+      await addDl(v7Out,SITE_ID+'_NDS_DELTA_V7.txt','NDS Delta V7 Script (Standalone)');
+    }
+
+    // ══ V8 — STANDALONE INDEPENDENT TEMPLATE ══
+    if(sel.v8){
+      var v8out=[];
+      var v8add=function(fdnSuffix,params){
+        v8out.push('set');
+        v8out.push('FDN : "SubNetwork=ONRM_ROOT_MO,MeContext='+SITE_ID+',ManagedElement='+SITE_ID+','+fdnSuffix+'"');
+        Object.keys(params).forEach(function(k){v8out.push(k+' : '+params[k]);});
+        v8out.push('');
+      };
+
+      // B29 sectors (all cells)
+      var v8B29Cells=[];
+      if(secLTE['B29'])['ALPHA','BETA','GAMMA'].forEach(function(s){v8B29Cells=v8B29Cells.concat(allCells('B29',s));});
+
+      // All 5G sectors (all bands)
+      var v8AllNRCells=[];
+      Object.keys(g5).forEach(function(band){['ALPHA','BETA','GAMMA'].forEach(function(s){(g5[band][s]||[]).forEach(function(c){v8AllNRCells.push(c);});});});
+
+      // 850/PCS/AWS sectors (NR LB+MB)
+      var v8LbMbCells=[];
+      ['850','PCS','AWS'].forEach(function(band){['ALPHA','BETA','GAMMA'].forEach(function(s){(g5[band]||{})[s]&&g5[band][s].forEach(function(c){v8LbMbCells.push(c);});});});
+
+      // n077 sectors only if site is NSA
+      var v8NsaCBandCells=[];
+      ['ALPHA','BETA','GAMMA'].forEach(function(s){((nsaSectors['n077']||{})[s]||[]).forEach(function(c){v8NsaCBandCells.push(c);});});
+
+      // 850/PCS/AWS sectors only if SA AND RRU contains Radio_4435/AIR4435
+      var v8SA4435Cells=[];
+      ['850','PCS','AWS'].forEach(function(band){['ALPHA','BETA','GAMMA'].forEach(function(s){((saSectors[band]||{})[s]||[]).forEach(function(c){
+        var rru=(nrCellRruMap[c]||'');
+        if(rru.indexOf('Radio_4435')>=0||rru.indexOf('AIR4435')>=0)v8SA4435Cells.push(c);
+      });});});
+
+      // n077 sectors only if site is SA
+      var v8SACBandCells=[];
+      ['ALPHA','BETA','GAMMA'].forEach(function(s){((saSectors['n077']||{})[s]||[]).forEach(function(c){v8SACBandCells.push(c);});});
+
+      // ── V8 COMMANDS ──
+
+      // B29: loopingEndcProtectionEnabled + restartBufMonAtMobility
+      v8B29Cells.forEach(function(c){v8add('ENodeBFunction=1,EUtranCellFDD='+c,{loopingEndcProtectionEnabled:'True',restartBufMonAtMobility:'True'});});
+
+      // All NRCellDU: pdschAllowedInDmrsSym
+      v8AllNRCells.forEach(function(c){v8add('GNBDUFunction=1,NRCellDU='+c,{pdschAllowedInDmrsSym:'true'});});
+
+      // 850/PCS/AWS: pMax:23
+      v8LbMbCells.forEach(function(c){v8add('GNBDUFunction=1,NRCellDU='+c,{pMax:'23'});});
+
+      // n077 NSA only: pMax:26
+      v8NsaCBandCells.forEach(function(c){v8add('GNBDUFunction=1,NRCellDU='+c,{pMax:'26'});});
+
+      // SA + Radio_4435/AIR4435: pMax:26
+      v8SA4435Cells.forEach(function(c){v8add('GNBDUFunction=1,NRCellDU='+c,{pMax:'26'});});
+
+      // n077 SA only: pMax:1000
+      v8SACBandCells.forEach(function(c){v8add('GNBDUFunction=1,NRCellDU='+c,{pMax:'1000'});});
+
+      var v8Out=v8out.join('\n').replace(/\n{3,}/g,'\n\n').trim()+'\n';
+      await addDl(v8Out,SITE_ID+'_NDS_DELTA_V8.txt','NDS Delta V8 Script (Standalone)');
+    }
+
+    var folder=pickedFolderHandle?pickedFolderHandle.name:'Downloads';
+    document.getElementById('dlSection').innerHTML='';
+    alert('\u2705 Scripts generated and saved to "' + folder + '" folder successfully!');
+
+  } catch(err){alert('Error: '+err.message);console.error(err);}
+  finally{btn.disabled=false;sp.style.display='none';bt.textContent='\u26a1 Generate Scripts';}
+}
+
+// GL AUDIT
+var glFileInput=document.getElementById('glFile');
+var glZone=document.getElementById('glZone');
+glFileInput.addEventListener('change',function(){
+  if(glFileInput.files[0]){glZone.classList.add('has-file');var b=document.getElementById('glBadge');b.textContent='\u2713 '+glFileInput.files[0].name;b.style.display='inline-block';}
+});
+glZone.addEventListener('dragover',function(e){e.preventDefault();glZone.classList.add('dragover');});
+glZone.addEventListener('dragleave',function(){glZone.classList.remove('dragover');});
+glZone.addEventListener('drop',function(e){e.preventDefault();glZone.classList.remove('dragover');if(e.dataTransfer.files[0]){glFileInput.files=e.dataTransfer.files;glFileInput.dispatchEvent(new Event('change'));}});
+
+function toggleGLParams(){
+  var box=document.getElementById('glParamBox');
+  var visible=box.style.display!=='none';
+  box.style.display=visible?'none':'block';
+  document.getElementById('glParamToggle').textContent=visible?'\u25bc Click to edit':'\u25b2 Click to hide';
+}
+
+function saveGLParams(){
+  var lines=document.getElementById('glParams').value.split('\n').filter(function(l){return l.trim();}).length;
+  document.getElementById('glParamCount').textContent='('+lines+' params)';
+  document.getElementById('glSaveMsg').textContent='Saved '+lines+' parameters!';
+  setTimeout(function(){document.getElementById('glSaveMsg').textContent='';},3000);
+}
+
+function setGLStatus(msg){
+  var el=document.getElementById('glStatus');
+  el.style.display='block';el.textContent=msg;
+}
+
+async function runGLAudit(){
+  var btn=document.getElementById('glRunBtn'),sp=document.getElementById('glSpinner'),bt=document.getElementById('glBtnTxt');
+  var summaryRow=document.getElementById('glSummaryRow'),dlSection=document.getElementById('glDlSection');
+  summaryRow.style.display='none';summaryRow.innerHTML='';dlSection.innerHTML='';
+  document.getElementById('glStatusBox').classList.add('visible');
+  if(!glFileInput.files[0]){alert('Please upload an Excel file first!');return;}
+  btn.disabled=true;sp.style.display='block';bt.textContent='Processing...';
+  try {
+    var searchParams=document.getElementById('glParams').value.split('\n').map(function(l){return l.trim();}).filter(function(l){return l;});
+    setGLStatus('Reading file...');
+    var ab=await glFileInput.files[0].arrayBuffer();
+    var wb=XLSX.read(ab,{type:'array',cellStyles:true,bookVBA:true});
+    if(!wb.Sheets['Discrepancies']){alert('Sheet "Discrepancies" not found!\nAvailable: '+wb.SheetNames.join(', '));return;}
+    var ws=wb.Sheets['Discrepancies'];
+    var data=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+    var paramColIdx=-1,headerRowIdx=-1;
+    for(var i=0;i<Math.min(data.length,20);i++){
+      var idx=data[i].findIndex(function(h){return String(h).trim()==='Parameter';});
+      if(idx!==-1){paramColIdx=idx;headerRowIdx=i;break;}
+    }
+    if(paramColIdx===-1){alert('"Parameter" column not found!');return;}
+    setGLStatus('Running parameter search...');
+    var range=XLSX.utils.decode_range(ws['!ref']||'A1');
+    var newColNum=range.e.c+2,newColLetter=XLSX.utils.encode_col(newColNum);
+    var headerExcelRow=headerRowIdx+1;
+    ws[newColLetter+headerExcelRow]={v:'Search Result',t:'s',s:{fill:{patternType:'solid',fgColor:{rgb:'4472C4'}},font:{bold:true,color:{rgb:'FFFFFF'},name:'Calibri',sz:11},alignment:{horizontal:'center',vertical:'center'}}};
+    var PRESERVE={'FF6495ED':1,'FF2DD2A9':1,'ff6495ed':1,'ff2dd2a9':1};
+    var matched=0,total=0;
+    for(var i=headerRowIdx+1;i<data.length;i++){
+      var row=data[i];
+      var firstVal=String(row[0]||'').trim();
+      if(!firstVal||firstVal==='nan')continue;
+      var paramVal=String(row[paramColIdx]||'').trim();
+      if(!paramVal||paramVal==='nan')continue;
+      total++;
+      var hit=searchParams.some(function(p){return paramVal.toLowerCase().indexOf(p.toLowerCase())>=0;});
+      var excelRow=i+1,srAddr=newColLetter+excelRow;
+      if(hit){
+        matched++;
+        ws[srAddr]={v:'Match',t:'s',s:{fill:{patternType:'solid',fgColor:{rgb:'C6EFCE'}},font:{bold:true,color:{rgb:'006100'},name:'Calibri',sz:11},alignment:{horizontal:'center',vertical:'center'}}};
+        for(var c=range.s.c;c<=range.e.c;c++){
+          var cellAddr=XLSX.utils.encode_cell({r:i,c:c});
+          var existRgb=((ws[cellAddr]&&ws[cellAddr].s&&ws[cellAddr].s.fill&&ws[cellAddr].s.fill.fgColor&&ws[cellAddr].s.fill.fgColor.rgb)||'00000000');
+          var BLANK={'00000000':1,'00FFFFFF':1,'FFFFFFFF':1,'':1};
+          if(!PRESERVE[existRgb]&&BLANK[existRgb]){if(!ws[cellAddr])ws[cellAddr]={v:'',t:'s',s:{}};if(!ws[cellAddr].s)ws[cellAddr].s={};ws[cellAddr].s.fill={patternType:'solid',fgColor:{rgb:'FFFF00'}};}
+        }
+      } else {
+        ws[srAddr]={v:'No Match',t:'s',s:{fill:{patternType:'solid',fgColor:{rgb:'FFCCCC'}},font:{color:{rgb:'9C0006'},name:'Calibri',sz:11},alignment:{horizontal:'center',vertical:'center'}}};
+      }
+    }
+    range.e.c=newColNum;ws['!ref']=XLSX.utils.encode_range(range);
+    if(!ws['!cols'])ws['!cols']=[];while(ws['!cols'].length<=newColNum)ws['!cols'].push({});ws['!cols'][newColNum]={wch:15};
+    var outBuf=XLSX.write(wb,{bookType:'xlsx',type:'array',cellStyles:true});
+    var blob=new Blob([outBuf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    var url=URL.createObjectURL(blob);
+    var origName=glFileInput.files[0].name.replace(/\.[^.]+$/,'');
+    var filename=origName+'_SearchResult.xlsx';
+    summaryRow.style.display='grid';
+    [{label:'Total Rows',value:total},{label:'Match',value:matched},{label:'No Match',value:total-matched}].forEach(function(item){
+      summaryRow.innerHTML+='<div class="sum-item"><div class="sum-label">'+item.label+'</div><div class="sum-val">'+item.value+'</div></div>';
+    });
+    var a=document.createElement('a');a.className='dl-btn';a.href=url;a.download=filename;
+    a.innerHTML='<div>\u2b07\ufe0f Download Result</div><span>'+filename+'</span>';
+    dlSection.appendChild(a);
+    setGLStatus('Done! '+matched+' matches found out of '+total+' rows.');
+  } catch(err){setGLStatus('Error: '+err.message);console.error(err);}
+  finally{btn.disabled=false;sp.style.display='none';bt.textContent='\uD83D\uDD0D Run Parameter Search';}
+}
+
+// ══ LOCK / UNLOCK TOOL ══
+var luMode='SHUTTINGDOWN';
+var luFilter='ENABLED';
+var luLastFile='';
+
+var luZone=document.getElementById('luZone');
+luZone.addEventListener('dragover',function(e){e.preventDefault();luZone.classList.add('dragover');});
+luZone.addEventListener('dragleave',function(){luZone.classList.remove('dragover');});
+luZone.addEventListener('drop',function(e){
+  e.preventDefault();luZone.classList.remove('dragover');
+  if(e.dataTransfer.files[0]){document.getElementById('luFile').files=e.dataTransfer.files;luReadFile(document.getElementById('luFile'));}
+});
+
+function luReadFile(input){
+  var file=input.files[0];if(!file)return;
+  luLastFile=file.name.replace(/\.txt$/i,'');
+  luZone.classList.add('has-file');
+  var b=document.getElementById('luBadge');b.textContent='\u2713 '+file.name;b.style.display='inline-block';
+  var r=new FileReader();
+  r.onload=function(ev){document.getElementById('luPaste').value=ev.target.result;luGenerate();};
+  r.readAsText(file);
+}
+
+function luSetMode(m,el){
+  luMode=m;
+  document.querySelectorAll('.lu-mode-btn').forEach(function(b){b.className='lu-mode-btn';});
+  var cls={SHUTTINGDOWN:'lu-mode-btn active-sd',UNLOCKED:'lu-mode-btn active-ul',LOCKED:'lu-mode-btn active-lk'};
+  el.className=cls[m];
+  luGenerate();
+}
+
+function luSetFilter(f,el){
+  luFilter=f;
+  document.querySelectorAll('.lu-filter-btn').forEach(function(b){b.className='lu-filter-btn';});
+  el.className='lu-filter-btn active-filter';
+  luGenerate();
+}
+
+function luCellMatches(line){
+  var u=/UNLOCKED/.test(line);
+  var e=/ENABLED/.test(line);
+  if(luFilter==='ENABLED') return u&&e;
+  if(luFilter==='UNLOCKED') return u;
+  return true;
+}
+
+function luGenerate(){
+  var raw=document.getElementById('luPaste').value.trim();
+  var outEl=document.getElementById('luOutput');
+  var card=document.getElementById('luOutputCard');
+  var statsEl=document.getElementById('luStats');
+  var skipEl=document.getElementById('luSkipped');
+  if(!raw){card.style.display='none';return;}
+  card.style.display='block';
+
+  var siteM=raw.match(/^(\S+)>/m);
+  var site=siteM?siteM[1]:'SITE';
+
+  var lteIn=[],nrIn=[],lteSkip=[],nrSkip=[];
+  raw.split('\n').forEach(function(line){
+    var lm=line.match(/ENodeBFunction=\d+,EUtranCellFDD=(\S+)/);
+    var nm=line.match(/GNBDUFunction=\d+,NRCellDU=(\S+)/);
+    if(lm) luCellMatches(line)?lteIn.push(lm[1]):lteSkip.push(lm[1]);
+    if(nm) luCellMatches(line)?nrIn.push(nm[1]):nrSkip.push(nm[1]);
+  });
+
+  var lteCmds=lteIn.map(function(c){return 'cmedit set '+site+' EUtrancellFDD.(EUtranCellFDDid=='+c+') administrativeState='+luMode+' --force';});
+  var nrCmds=nrIn.map(function(c){return 'cmedit set '+site+' NRCellDU.NRCellDUId=='+c+' administrativeState='+luMode+' --force';});
+
+  if(!lteCmds.length&&!nrCmds.length){
+    outEl.innerHTML='<span style="color:var(--muted)">No matching cells found.</span>';
+    statsEl.textContent='';skipEl.style.display='none';return;
+  }
+
+  var html='';
+  lteCmds.forEach(function(c){html+='<span style="color:var(--accent)">'+c.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</span>\n';});
+  nrCmds.forEach(function(c){html+='<span style="color:var(--green)">'+c.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</span>\n';});
+  outEl.innerHTML=html.trimEnd();
+
+  statsEl.innerHTML='<span style="color:var(--accent);font-weight:600">LTE: '+lteIn.length+'</span> &nbsp; <span style="color:var(--green);font-weight:600">NR: '+nrIn.length+'</span> &nbsp; Total: '+(lteCmds.length+nrCmds.length);
+
+  var skippedAll=lteSkip.concat(nrSkip);
+  if(skippedAll.length){skipEl.style.display='block';skipEl.textContent='\u2298 Skipped: '+skippedAll.join(', ');}
+  else skipEl.style.display='none';
+}
+
+function luCopy(){
+  var t=document.getElementById('luOutput').innerText.trim();
+  if(!t||t.includes('No matching'))return;
+  navigator.clipboard.writeText(t).then(function(){alert('Copied to clipboard!');});
+}
+
+function luDownload(){
+  var t=document.getElementById('luOutput').innerText.trim();
+  if(!t||t.includes('No matching'))return;
+  var raw=document.getElementById('luPaste').value;
+  var m=raw.match(/^(\S+)>/m);
+  var fn=(luLastFile||(m?m[1]:'commands'))+'_'+luMode.toLowerCase()+'.txt';
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([t],{type:'text/plain'}));
+  a.download=fn;a.click();
+}
+</script>
+</body>
+</html>
