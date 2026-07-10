@@ -6,6 +6,9 @@
 <title>MasTec Delta Tool</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<!-- Libraries for KGetAll Comparison Tool (colored Excel export) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
 <style>
 :root{--bg:#f0f6ff;--surface:#ffffff;--sidebar:#1a2744;--border:#d0e0f5;--accent:#2563eb;--accent-light:#dbeafe;--green:#16a34a;--green-light:#dcfce7;--red:#dc2626;--red-light:#fee2e2;--amber:#d97706;--amber-light:#fef3c7;--text:#1e293b;--text2:#475569;--muted:#94a3b8;--font:'Inter',sans-serif;--mono:'JetBrains Mono',monospace;--shadow:0 1px 3px rgba(0,0,0,0.08),0 4px 16px rgba(37,99,235,0.06);--shadow-lg:0 4px 24px rgba(37,99,235,0.12);}
 *{box-sizing:border-box;margin:0;padding:0;}
@@ -42,6 +45,8 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 .nav-item.active{background:rgba(37,99,235,0.4);color:#fff;}
 .nav-item.sub{padding-left:28px;font-size:12px;}
 .sidebar-footer{padding:16px;border-top:1px solid rgba(255,255,255,0.08);}
+.back-btn{display:flex;align-items:center;gap:8px;background:none;border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:10px 14px;color:#94a3b8;font-size:13px;font-weight:600;cursor:pointer;width:100%;transition:all .15s;text-decoration:none}
+.back-btn:hover{background:rgba(255,255,255,.06);color:#e2e8f0;border-color:rgba(255,255,255,.3)}
 .user-card{display:flex;align-items:center;gap:10px;margin-bottom:12px;}
 .user-avatar{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#2563eb,#60a5fa);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;flex-shrink:0;}
 .user-name{font-size:12px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
@@ -130,8 +135,72 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 .dl-btn{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--green-light);border:1px solid #86efac;border-radius:8px;color:var(--green);text-decoration:none;font-size:13px;font-weight:600;transition:all 0.15s;}
 .dl-btn:hover{background:#bbf7d0;}
 .dl-btn span{font-size:11px;opacity:0.7;font-family:var(--mono);}
-/* GL Audit */
-.gl-status{margin-top:16px;font-size:13px;color:var(--text2);font-family:var(--mono);display:none;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;padding:16px;}
+/* ===== KGetAll Comparison Tool (scoped styles) ===== */
+#panel-kgetall .topbar { background: #161b22; border-bottom: 1px solid #30363d; padding: 14px 32px; display: flex; align-items: center; gap: 14px; }
+#panel-kgetall .topbar-icon { width: 36px; height: 36px; background: linear-gradient(135deg, #1F4E79, #2E75B6); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+#panel-kgetall .topbar h1 { font-size: 17px; font-weight: 600; color: #e6edf3; }
+#panel-kgetall .topbar span { font-size: 12px; color: #8b949e; margin-left: 4px; }
+#panel-kgetall .main { max-width: 960px; margin: 0 auto; padding: 36px 24px; }
+#panel-kgetall .section-label { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #8b949e; margin-bottom: 12px; }
+#panel-kgetall .upload-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 28px; }
+#panel-kgetall .upload-card { background: #161b22; border: 1.5px dashed #30363d; border-radius: 12px; padding: 28px 20px; text-align: center; cursor: pointer; transition: border-color 0.2s, background 0.2s; position: relative; min-height: 170px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+#panel-kgetall .upload-card:hover { border-color: #58a6ff; background: #1c2333; }
+#panel-kgetall .upload-card.active { border-color: #3fb950; border-style: solid; background: #122120; }
+#panel-kgetall .upload-card.drag-over { border-color: #58a6ff; background: #1c2333; }
+#panel-kgetall .upload-card input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+#panel-kgetall .upload-icon { font-size: 32px; margin-bottom: 10px; display: block; }
+#panel-kgetall .upload-title { font-size: 13px; font-weight: 600; color: #e6edf3; margin-bottom: 4px; }
+#panel-kgetall .upload-sub { font-size: 12px; color: #8b949e; }
+#panel-kgetall .upload-filename { font-size: 12px; color: #3fb950; margin-top: 8px; font-weight: 500; word-break: break-all; }
+#panel-kgetall .upload-stats { font-size: 11px; color: #8b949e; margin-top: 4px; }
+#panel-kgetall .run-btn { width: 100%; padding: 14px; background: linear-gradient(135deg, #1F4E79, #2E75B6); color: #fff; border: none; border-radius: 10px; font-size: 15px; font-weight: 600; cursor: pointer; transition: opacity 0.2s, transform 0.1s; margin-bottom: 28px; letter-spacing: 0.02em; }
+#panel-kgetall .run-btn:hover:not(:disabled) { opacity: 0.9; transform: translateY(-1px); }
+#panel-kgetall .run-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+#panel-kgetall .progress-wrap { background: #161b22; border: 1px solid #30363d; border-radius: 10px; padding: 20px 24px; margin-bottom: 24px; display: none; }
+#panel-kgetall .progress-wrap.show { display: block; }
+#panel-kgetall .progress-label { font-size: 13px; color: #8b949e; margin-bottom: 10px; }
+#panel-kgetall .progress-bar-bg { background: #21262d; border-radius: 4px; height: 8px; overflow: hidden; }
+#panel-kgetall .progress-bar { height: 100%; border-radius: 4px; background: linear-gradient(90deg, #1F4E79, #2E75B6); transition: width 0.3s ease; width: 0%; }
+#panel-kgetall .progress-step { font-size: 12px; color: #58a6ff; margin-top: 8px; }
+#panel-kgetall .results-wrap { display: none; }
+#panel-kgetall .results-wrap.show { display: block; }
+#panel-kgetall .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 24px; }
+#panel-kgetall .stat-card { background: #161b22; border: 1px solid #30363d; border-radius: 10px; padding: 16px 18px; }
+#panel-kgetall .stat-card .stat-num { font-size: 26px; font-weight: 700; color: #e6edf3; line-height: 1.1; margin-bottom: 4px; }
+#panel-kgetall .stat-card .stat-label { font-size: 12px; color: #8b949e; }
+#panel-kgetall .stat-card.yellow .stat-num { color: #e3b341; }
+#panel-kgetall .stat-card.red .stat-num { color: #f85149; }
+#panel-kgetall .stat-card.green .stat-num { color: #3fb950; }
+#panel-kgetall .dl-btn { width: 100%; padding: 13px; background: #1a7f37; color: #fff; border: none; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; transition: background 0.2s, transform 0.1s; margin-bottom: 20px; }
+#panel-kgetall .dl-btn:hover:not(:disabled) { background: #238636; transform: translateY(-1px); }
+#panel-kgetall .dl-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+#panel-kgetall .color-legend { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; align-items: center; }
+#panel-kgetall .legend-item { display: flex; align-items: center; gap: 7px; font-size: 12px; color: #8b949e; }
+#panel-kgetall .legend-dot { width: 14px; height: 14px; border-radius: 3px; flex-shrink: 0; }
+#panel-kgetall .preview-table-wrap { background: #161b22; border: 1px solid #30363d; border-radius: 10px; overflow: hidden; }
+#panel-kgetall .preview-header { padding: 12px 18px; border-bottom: 1px solid #30363d; font-size: 12px; font-weight: 600; color: #8b949e; text-transform: uppercase; letter-spacing: 0.06em; display: flex; justify-content: space-between; align-items: center; }
+#panel-kgetall .preview-count { font-size: 11px; color: #58a6ff; font-weight: 400; }
+#panel-kgetall .tbl-scroll { overflow-x: auto; max-height: 420px; overflow-y: auto; }
+#panel-kgetall table { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 700px; }
+#panel-kgetall thead th { background: #21262d; color: #8b949e; font-weight: 600; padding: 9px 12px; text-align: left; position: sticky; top: 0; border-bottom: 1px solid #30363d; white-space: nowrap; z-index: 1; }
+#panel-kgetall tbody tr { border-bottom: 1px solid #21262d; }
+#panel-kgetall tbody tr:hover { filter: brightness(1.1); }
+#panel-kgetall tbody td { padding: 7px 12px; color: #c9d1d9; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#panel-kgetall tbody tr.row-changed { background: #2d2a00; }
+#panel-kgetall tbody tr.row-added { background: #0d2b1a; }
+#panel-kgetall tbody tr.row-removed { background: #2d0d0d; }
+#panel-kgetall .td-mo-type { background: #1f3558; color: #58a6ff; font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 4px; display: inline-block; }
+#panel-kgetall .td-param { color: #e6edf3; font-weight: 500; }
+#panel-kgetall .td-val-changed { color: #e3b341; }
+#panel-kgetall .td-val-added { color: #3fb950; }
+#panel-kgetall .td-val-removed { color: #f85149; }
+#panel-kgetall .td-missing { color: #484f58; font-style: italic; }
+#panel-kgetall .td-status-changed { color: #e3b341; font-weight: 700; font-size: 11px; }
+#panel-kgetall .td-status-added { color: #3fb950; font-weight: 700; font-size: 11px; }
+#panel-kgetall .td-status-removed { color: #f85149; font-weight: 700; font-size: 11px; }
+
+#panel-kgetall .error-box { background: #2d0d0d; border: 1px solid #f85149; border-radius: 8px; padding: 14px 18px; color: #f85149; font-size: 13px; margin-bottom: 16px; display: none; }
+#panel-kgetall .error-box.show { display: block; }
 /* Admin */
 .admin-table{width:100%;border-collapse:collapse;font-size:13px;}
 .admin-table th{text-align:left;padding:10px 12px;font-size:11px;text-transform:uppercase;letter-spacing:0.8px;color:var(--muted);border-bottom:1.5px solid var(--border);font-weight:600;}
@@ -173,19 +242,19 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
       <div class="nav-section-title">Audit Tool</div>
       <div class="nav-item active" id="nav-audit" onclick="showPanel('audit')">&#128269; Audit Tool</div>
       <div class="nav-item sub" id="nav-generator" onclick="showPanel('generator')">&#9889; Delta Scripts</div>
-      <div class="nav-item sub" id="nav-glaudit" onclick="showPanel('glaudit')">&#128203; GL Audit</div>
+      <div class="nav-item sub" id="nav-kgetall" onclick="showPanel('kgetall')">&#128203; KGetAll Comparison Tool</div>
       <div class="nav-item sub" id="nav-lockunlock" onclick="showPanel('lockunlock')">&#128274; Lock / Unlock</div>
       <div class="nav-item sub" id="nav-manualcmd" onclick="showPanel('manualcmd')">&#128221; Manual Cmd</div>
     </div>
     <div class="sidebar-footer">
+      <button class="back-btn" onclick="trinovaBackToPortal()">
+        &#8592; Back to ToolPortal
+      </button>
     </div>
   </div>
 
   <div class="main-content">
     <div class="topbar">
-      <button onclick="trinovaBackToPortal()" style="display:flex;align-items:center;gap:6px;background:none;border:1px solid #e2e8f0;border-radius:8px;padding:7px 14px;font-size:13px;font-weight:600;color:#475569;cursor:pointer;margin-right:18px;transition:all 0.15s ease;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='none'">
-        &#8592; Back to ToolPortal
-      </button>
       <div class="topbar-breadcrumb" id="breadcrumb">Audit Tool</div>
     </div>
 
@@ -198,9 +267,9 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
           <div class="sub-menu-card-name">Delta Scripts</div>
           <div class="sub-menu-card-arrow">Open &#8594;</div>
         </div>
-        <div class="sub-menu-card" onclick="showPanel('glaudit')">
+        <div class="sub-menu-card" onclick="showPanel('kgetall')">
           <div class="sub-menu-card-icon">&#128203;</div>
-          <div class="sub-menu-card-name">GL Audit</div>
+          <div class="sub-menu-card-name">KGetAll Comparison Tool</div>
           <div class="sub-menu-card-arrow">Open &#8594;</div>
         </div>
         <div class="sub-menu-card" onclick="showPanel('lockunlock')">
@@ -310,73 +379,95 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
       <div id="dlSection" style="margin-top:16px;display:flex;flex-direction:column;gap:8px;"></div>
     </div>
 
-    <!-- GL AUDIT -->
-    <div class="panel" id="panel-glaudit" style="max-width:800px">
-      <div class="home-welcome"><h2>&#128203; GL Audit</h2><p>Parameter Search Tool</p></div>
-      <div class="gen-section">
-        <div class="section-card">
-          <div class="section-title"><span class="step-badge">1</span> Upload Excel File (Discrepancies sheet)</div>
-          <div class="upload-zone" id="glZone">
-            <input type="file" id="glFile" accept=".xlsx,.xlsm,.xls" />
-            <div class="upload-icon">&#128194;</div>
-            <p><strong>Click to upload</strong> or drag &amp; drop</p>
-            <div class="file-badge" id="glBadge"></div>
-          </div>
+    <!-- KGETALL COMPARISON TOOL -->
+    <div class="panel" id="panel-kgetall" style="max-width:960px">
+      <div class="home-welcome"><h2>&#128203; KGetAll Comparison Tool</h2><p>Upload two kgetall exports &rarr; Compare parameters &rarr; Download colored Excel report</p></div>
+      <p class="section-label">Upload Files</p>
+      <div class="upload-grid">
+        <div class="upload-card" id="kgDrop1"
+          ondragover="event.preventDefault();this.classList.add('drag-over')"
+          ondragleave="this.classList.remove('drag-over')"
+          ondrop="kgHandleDrop(event,1)">
+          <input type="file" id="kgFile1" accept=".txt,.log" onchange="kgHandleFile(1)">
+          <span class="upload-icon">&#128196;</span>
+          <div class="upload-title">kgetall File 1</div>
+          <div class="upload-sub" id="kgSub1">.txt or .log &#8212; drag &amp; drop or click</div>
+          <div class="upload-filename" id="kgFname1"></div>
+          <div class="upload-stats" id="kgFstats1"></div>
+        </div>
+        <div class="upload-card" id="kgDrop2"
+          ondragover="event.preventDefault();this.classList.add('drag-over')"
+          ondragleave="this.classList.remove('drag-over')"
+          ondrop="kgHandleDrop(event,2)">
+          <input type="file" id="kgFile2" accept=".txt,.log" onchange="kgHandleFile(2)">
+          <span class="upload-icon">&#128196;</span>
+          <div class="upload-title">kgetall File 2</div>
+          <div class="upload-sub" id="kgSub2">.txt or .log &#8212; drag &amp; drop or click</div>
+          <div class="upload-filename" id="kgFname2"></div>
+          <div class="upload-stats" id="kgFstats2"></div>
         </div>
       </div>
-      <div class="gen-section">
-        <div class="section-card">
-          <div class="section-title" style="cursor:pointer;justify-content:space-between" onclick="toggleGLParams()">
-            <span><span class="step-badge">2</span> Search Parameters <span id="glParamCount" style="font-size:11px;font-weight:400;color:var(--muted);margin-left:8px">(30 params)</span></span>
-            <span id="glParamToggle" style="font-size:12px;color:var(--accent);font-weight:500">&#9660; Click to edit</span>
-          </div>
-          <div id="glParamBox" style="display:none">
-            <p style="font-size:12px;color:var(--muted);margin-bottom:8px;">One parameter per line. Exact match, case-insensitive.</p>
-            <textarea id="glParams" style="width:100%;height:200px;background:var(--bg);border:1.5px solid var(--border);border-radius:8px;color:var(--text);font-size:12px;font-family:var(--mono);padding:12px;outline:none;resize:vertical;">cellRange
-qRxLevMin
-CRSGAIN
-CXC4011809
-CXC4012607
-dscp
-servOrPrioTriggeredIFHo
-drxProfileEnabled
-additionalPlmnReservedList
-endcAllowedPlmnList
-rohcForUlDataEnabled
-selectedKeyExchanges
-pZeroNomPucch
-pZeroNomPuschGrant
-rachPreambleRecTargetPower
-thresholdRsrp
-a3offset
-a5Threshold2Rsrp
-a5Threshold2Rsrq
-threshXLowQ
-reportAmountA5
-lowHighFreqPrioClassification
-interFreqHoHigherPrioEndc
-servOrPrioIFHoSetupBearer
-spifhoDedicatedReportConfig
-dlCalibrationEnabled
-dlInterferenceManagementActive
-catm1SupportEnabled
-capCellRrcConnSleepThreshold
-covCellRrcConnWakeUpThreshold</textarea>
-            <div style="display:flex;gap:8px;margin-top:8px;">
-              <button onclick="saveGLParams()" style="padding:7px 16px;background:var(--accent);color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">Save</button>
-              <span id="glSaveMsg" style="font-size:12px;color:var(--green);line-height:32px;"></span>
-            </div>
-          </div>
-        </div>
-      </div>
-      <button class="gen-btn-main" id="glRunBtn" onclick="runGLAudit()">
-        <div class="spinner" id="glSpinner"></div>
-        <span id="glBtnTxt">&#128269; Run Parameter Search</span>
+
+      <div class="error-box" id="kgErrorBox"></div>
+
+      <button class="run-btn" id="kgRunBtn" disabled onclick="kgRunComparison()">
+        &#9889; Compare &amp; Generate Excel
       </button>
-      <div class="gl-status" id="glStatus"></div>
-      <div class="status-box" id="glStatusBox">
-        <div class="summary-row" id="glSummaryRow" style="display:none;grid-template-columns:repeat(3,1fr)"></div>
-        <div class="dl-section" id="glDlSection"></div>
+
+      <div class="progress-wrap" id="kgProgressWrap">
+        <div class="progress-label" id="kgProgressLabel">Initializing...</div>
+        <div class="progress-bar-bg"><div class="progress-bar" id="kgProgressBar"></div></div>
+        <div class="progress-step" id="kgProgressStep"></div>
+      </div>
+
+      <div class="results-wrap" id="kgResultsWrap">
+        <div class="stats-grid">
+          <div class="stat-card yellow">
+            <div class="stat-num" id="kg-stat-diff">0</div>
+            <div class="stat-label">Parameter Differences</div>
+          </div>
+          <div class="stat-card red">
+            <div class="stat-num" id="kg-stat-only1">0</div>
+            <div class="stat-label">MOs only in File 1</div>
+          </div>
+          <div class="stat-card green">
+            <div class="stat-num" id="kg-stat-only2">0</div>
+            <div class="stat-label">MOs only in File 2</div>
+          </div>
+        </div>
+
+        <div class="color-legend">
+          <span style="font-size:12px;color:#8b949e;font-weight:600;">Excel Color Key:</span>
+          <div class="legend-item"><div class="legend-dot" style="background:#FFF2CC;border:1px solid #e3b341;"></div>Value Changed</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#E2EFDA;border:1px solid #3fb950;"></div>Only in File 2 (New)</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#FCE4D6;border:1px solid #f85149;"></div>Only in File 1 (Removed)</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#CFE2F3;border:1px solid #58a6ff;"></div>MO Header Row</div>
+        </div>
+
+        <button class="dl-btn" id="kgDlBtn" onclick="kgDownloadExcel()">
+          &#11015; Download Colored Excel Report
+        </button>
+
+        <div class="preview-table-wrap">
+          <div class="preview-header">
+            Preview &#8212; Parameter Differences
+            <span class="preview-count" id="kgPreviewCount"></span>
+          </div>
+          <div class="tbl-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>MO Type</th>
+                  <th>Parameter</th>
+                  <th>File 1 Value</th>
+                  <th>File 2 Value</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="kgPreviewBody"></tbody>
+            </table>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -710,7 +801,7 @@ function trinovaBackToPortal() {
 var sel={nds:false,fga:false,v3:false,v4:false,v5:false,v6:false,v7:false,v8:false};
 var fgaGen='auto';
 
-var breadcrumbs={audit:'Audit Tool',generator:'Audit Tool / Delta Scripts',glaudit:'Audit Tool / GL Audit',lockunlock:'Audit Tool / Lock & Unlock',manualcmd:'Audit Tool / Manual Cmd'};
+var breadcrumbs={audit:'Audit Tool',generator:'Audit Tool / Delta Scripts',kgetall:'Audit Tool / KGetAll Comparison Tool',lockunlock:'Audit Tool / Lock & Unlock',manualcmd:'Audit Tool / Manual Cmd'};
 
 function showPanel(id){
   document.querySelectorAll('.panel').forEach(function(p){p.classList.remove('active');});
@@ -2087,102 +2178,288 @@ async function generate(){
   finally{btn.disabled=false;sp.style.display='none';bt.textContent='\u26a1 Generate Scripts';}
 }
 
-// GL AUDIT
-var glFileInput=document.getElementById('glFile');
-var glZone=document.getElementById('glZone');
-glFileInput.addEventListener('change',function(){
-  if(glFileInput.files[0]){glZone.classList.add('has-file');var b=document.getElementById('glBadge');b.textContent='\u2713 '+glFileInput.files[0].name;b.style.display='inline-block';}
-});
-glZone.addEventListener('dragover',function(e){e.preventDefault();glZone.classList.add('dragover');});
-glZone.addEventListener('dragleave',function(){glZone.classList.remove('dragover');});
-glZone.addEventListener('drop',function(e){e.preventDefault();glZone.classList.remove('dragover');if(e.dataTransfer.files[0]){glFileInput.files=e.dataTransfer.files;glFileInput.dispatchEvent(new Event('change'));}});
+// ===== KGetAll Comparison Tool =====
+let kgFileData = {1: null, 2: null};
+let kgNodeNames = {1: '', 2: ''};
+let kgLastResults = null;
 
-function toggleGLParams(){
-  var box=document.getElementById('glParamBox');
-  var visible=box.style.display!=='none';
-  box.style.display=visible?'none':'block';
-  document.getElementById('glParamToggle').textContent=visible?'\u25bc Click to edit':'\u25b2 Click to hide';
+function kgTick() { return new Promise(r => setTimeout(r, 30)); }
+
+function kgSetProgress(pct, label, step) {
+  document.getElementById('kgProgressBar').style.width = pct + '%';
+  document.getElementById('kgProgressLabel').textContent = label;
+  document.getElementById('kgProgressStep').textContent = step || '';
 }
 
-function saveGLParams(){
-  var lines=document.getElementById('glParams').value.split('\n').filter(function(l){return l.trim();}).length;
-  document.getElementById('glParamCount').textContent='('+lines+' params)';
-  document.getElementById('glSaveMsg').textContent='Saved '+lines+' parameters!';
-  setTimeout(function(){document.getElementById('glSaveMsg').textContent='';},3000);
+function kgShowError(msg) {
+  const el = document.getElementById('kgErrorBox');
+  el.textContent = '⚠ ' + msg;
+  el.classList.add('show');
 }
 
-function setGLStatus(msg){
-  var el=document.getElementById('glStatus');
-  el.style.display='block';el.textContent=msg;
+function kgHandleDrop(e, num) {
+  e.preventDefault();
+  document.getElementById('kgDrop' + num).classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file) kgLoadFile(num, file);
 }
 
-async function runGLAudit(){
-  var btn=document.getElementById('glRunBtn'),sp=document.getElementById('glSpinner'),bt=document.getElementById('glBtnTxt');
-  var summaryRow=document.getElementById('glSummaryRow'),dlSection=document.getElementById('glDlSection');
-  summaryRow.style.display='none';summaryRow.innerHTML='';dlSection.innerHTML='';
-  document.getElementById('glStatusBox').classList.add('visible');
-  if(!glFileInput.files[0]){alert('Please upload an Excel file first!');return;}
-  btn.disabled=true;sp.style.display='block';bt.textContent='Processing...';
-  try {
-    var searchParams=document.getElementById('glParams').value.split('\n').map(function(l){return l.trim();}).filter(function(l){return l;});
-    setGLStatus('Reading file...');
-    var ab=await glFileInput.files[0].arrayBuffer();
-    var wb=XLSX.read(ab,{type:'array',cellStyles:true,bookVBA:true});
-    if(!wb.Sheets['Discrepancies']){alert('Sheet "Discrepancies" not found!\nAvailable: '+wb.SheetNames.join(', '));return;}
-    var ws=wb.Sheets['Discrepancies'];
-    var data=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
-    var paramColIdx=-1,headerRowIdx=-1;
-    for(var i=0;i<Math.min(data.length,20);i++){
-      var idx=data[i].findIndex(function(h){return String(h).trim()==='Parameter';});
-      if(idx!==-1){paramColIdx=idx;headerRowIdx=i;break;}
+function kgHandleFile(num) {
+  const file = document.getElementById('kgFile' + num).files[0];
+  if (file) kgLoadFile(num, file);
+}
+
+function kgLoadFile(num, file) {
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const text = e.target.result.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+    kgFileData[num] = text;
+    const node = (text.match(/managedElementId\s+(\S+)/) || [])[1] || file.name.replace(/\.[^.]+$/, '');
+    kgNodeNames[num] = node;
+    document.getElementById('kgDrop' + num).classList.add('active');
+    document.getElementById('kgFname' + num).textContent = '✓ ' + file.name;
+    const moCount = (text.match(/^MO /gm) || []).length;
+    document.getElementById('kgFstats' + num).textContent = 'Node: ' + node + ' | ' + moCount.toLocaleString() + ' MOs | ' + (file.size/1024/1024).toFixed(1) + ' MB';
+    document.getElementById('kgSub' + num).textContent = '';
+    kgCheckReady();
+  };
+  reader.readAsText(file);
+}
+
+function kgCheckReady() {
+  document.getElementById('kgRunBtn').disabled = !(kgFileData[1] && kgFileData[2]);
+}
+
+function kgParseKgetall(text) {
+  const mos = {};
+  let mo = null, params = {}, inStruct = false, sName = null, sMembers = [];
+  for (const rawLine of text.split('\n')) {
+    const line = rawLine.trimEnd();
+    if (/^={10,}/.test(line) || /^Proxy Id\s+\d+/.test(line)) continue;
+    const moM = line.match(/^MO\s+(.+)/);
+    if (moM) {
+      if (mo !== null) mos[mo] = params;
+      mo = moM[1].trim(); params = {}; inStruct = false; sName = null; sMembers = [];
+      continue;
     }
-    if(paramColIdx===-1){alert('"Parameter" column not found!');return;}
-    setGLStatus('Running parameter search...');
-    var range=XLSX.utils.decode_range(ws['!ref']||'A1');
-    var newColNum=range.e.c+2,newColLetter=XLSX.utils.encode_col(newColNum);
-    var headerExcelRow=headerRowIdx+1;
-    ws[newColLetter+headerExcelRow]={v:'Search Result',t:'s',s:{fill:{patternType:'solid',fgColor:{rgb:'4472C4'}},font:{bold:true,color:{rgb:'FFFFFF'},name:'Calibri',sz:11},alignment:{horizontal:'center',vertical:'center'}}};
-    var PRESERVE={'FF6495ED':1,'FF2DD2A9':1,'ff6495ed':1,'ff2dd2a9':1};
-    var matched=0,total=0;
-    for(var i=headerRowIdx+1;i<data.length;i++){
-      var row=data[i];
-      var firstVal=String(row[0]||'').trim();
-      if(!firstVal||firstVal==='nan')continue;
-      var paramVal=String(row[paramColIdx]||'').trim();
-      if(!paramVal||paramVal==='nan')continue;
-      total++;
-      var hit=searchParams.some(function(p){return paramVal.toLowerCase().indexOf(p.toLowerCase())>=0;});
-      var excelRow=i+1,srAddr=newColLetter+excelRow;
-      if(hit){
-        matched++;
-        ws[srAddr]={v:'Match',t:'s',s:{fill:{patternType:'solid',fgColor:{rgb:'C6EFCE'}},font:{bold:true,color:{rgb:'006100'},name:'Calibri',sz:11},alignment:{horizontal:'center',vertical:'center'}}};
-        for(var c=range.s.c;c<=range.e.c;c++){
-          var cellAddr=XLSX.utils.encode_cell({r:i,c:c});
-          var existRgb=((ws[cellAddr]&&ws[cellAddr].s&&ws[cellAddr].s.fill&&ws[cellAddr].s.fill.fgColor&&ws[cellAddr].s.fill.fgColor.rgb)||'00000000');
-          var BLANK={'00000000':1,'00FFFFFF':1,'FFFFFFFF':1,'':1};
-          if(!PRESERVE[existRgb]&&BLANK[existRgb]){if(!ws[cellAddr])ws[cellAddr]={v:'',t:'s',s:{}};if(!ws[cellAddr].s)ws[cellAddr].s={};ws[cellAddr].s.fill={patternType:'solid',fgColor:{rgb:'FFFF00'}};}
-        }
-      } else {
-        ws[srAddr]={v:'No Match',t:'s',s:{fill:{patternType:'solid',fgColor:{rgb:'FFCCCC'}},font:{color:{rgb:'9C0006'},name:'Calibri',sz:11},alignment:{horizontal:'center',vertical:'center'}}};
+    if (mo === null) continue;
+    const ss = line.match(/^Struct\s+(\S+)\s+has\s+\d+\s+members:/);
+    if (ss) {
+      if (inStruct && sName && sMembers.length) params[sName] = sMembers.join(' | ');
+      sName = ss[1]; sMembers = []; inStruct = true; continue;
+    }
+    if (inStruct) {
+      const sv = line.match(/^\s*>>>\s*\d+\.(\S+)\s*=\s*(.*)/);
+      if (sv) { sMembers.push(sv[1] + '=' + sv[2].trim()); continue; }
+      if (sName && sMembers.length) params[sName] = sMembers.join(' | ');
+      inStruct = false; sName = null; sMembers = [];
+    }
+    const pm = line.match(/^([a-zA-Z]\S*)\s{2,}(.*)/);
+    if (pm) params[pm[1].trim()] = pm[2].trim();
+  }
+  if (mo !== null) mos[mo] = params;
+  return mos;
+}
+
+function kgNormalizeKey(mo, nodeId) {
+  let n = mo.replace(new RegExp('MeContext=' + nodeId, 'g'), 'MeContext=NODE');
+  n = n.replace(new RegExp('ManagedElement=' + nodeId, 'g'), 'ManagedElement=NODE');
+  n = n.replace(/MNL\d+_/g, 'MNL_');
+  return n;
+}
+
+function kgMoType(mo) {
+  const parts = mo.split(',');
+  const last = parts[parts.length - 1] || mo;
+  return (last.match(/^([A-Za-z]+)/) || [null, last])[1];
+}
+
+function kgCompare(mos1, mos2, n1, n2) {
+  const norm1 = {}, norm2 = {};
+  for (const [k, v] of Object.entries(mos1)) norm1[kgNormalizeKey(k, n1)] = {orig: k, params: v};
+  for (const [k, v] of Object.entries(mos2)) norm2[kgNormalizeKey(k, n2)] = {orig: k, params: v};
+  const allKeys = new Set([...Object.keys(norm1), ...Object.keys(norm2)]);
+  const diffs = [], only1 = [], only2 = [];
+  for (const nk of allKeys) {
+    const in1 = nk in norm1, in2 = nk in norm2;
+    const type = kgMoType(nk);
+    if (in1 && in2) {
+      const p1 = norm1[nk].params, p2 = norm2[nk].params;
+      const allParams = new Set([...Object.keys(p1), ...Object.keys(p2)]);
+      for (const param of allParams) {
+        if (param.startsWith('zzz')) continue;
+        const v1 = p1[param] !== undefined ? p1[param] : '-- NOT PRESENT --';
+        const v2 = p2[param] !== undefined ? p2[param] : '-- NOT PRESENT --';
+        if (v1 !== v2) diffs.push({kgMoType: type, moNorm: nk, mo1: norm1[nk].orig, mo2: norm2[nk].orig, param, v1, v2});
+      }
+    } else if (in1) {
+      only1.push({kgMoType: type, mo: norm1[nk].orig, params: norm1[nk].params});
+    } else {
+      only2.push({kgMoType: type, mo: norm2[nk].orig, params: norm2[nk].params});
+    }
+  }
+  return {diffs, only1, only2};
+}
+
+async function kgRunComparison() {
+  document.getElementById('kgErrorBox').classList.remove('show');
+  const pw = document.getElementById('kgProgressWrap');
+  const rw = document.getElementById('kgResultsWrap');
+  pw.classList.add('show'); rw.classList.remove('show');
+  document.getElementById('kgRunBtn').disabled = true;
+
+  try {
+    await kgTick(); kgSetProgress(10, 'Parsing File 1...', kgNodeNames[1]);
+    await kgTick(); const mos1 = kgParseKgetall(kgFileData[1]);
+    kgSetProgress(35, 'Parsing File 2...', kgNodeNames[2]);
+    await kgTick(); const mos2 = kgParseKgetall(kgFileData[2]);
+    kgSetProgress(60, 'Comparing MOs & Parameters...', Object.keys(mos1).length.toLocaleString() + ' vs ' + Object.keys(mos2).length.toLocaleString() + ' MOs');
+    await kgTick();
+    const results = kgCompare(mos1, mos2, kgNodeNames[1], kgNodeNames[2]);
+    kgLastResults = results;
+    kgSetProgress(85, 'Preparing Results...', results.diffs.length.toLocaleString() + ' differences found');
+    await kgTick();
+
+    document.getElementById('kg-stat-diff').textContent  = results.diffs.length.toLocaleString();
+    document.getElementById('kg-stat-only1').textContent = results.only1.length.toLocaleString();
+    document.getElementById('kg-stat-only2').textContent = results.only2.length.toLocaleString();
+
+    const tbody = document.getElementById('kgPreviewBody');
+    tbody.innerHTML = '';
+    const preview = results.diffs.slice(0, 150);
+    for (const r of preview) {
+      const isAdded   = r.v1 === '-- NOT PRESENT --';
+      const isRemoved = r.v2 === '-- NOT PRESENT --';
+      const rowClass  = isAdded ? 'row-added' : isRemoved ? 'row-removed' : 'row-changed';
+      const v1Class   = isAdded ? 'td-missing' : 'td-val-removed';
+      const v2Class   = isRemoved ? 'td-missing' : 'td-val-added';
+      const status    = isAdded ? 'New in File 2' : isRemoved ? 'Only in File 1' : 'Changed';
+      const statusCls = isAdded ? 'td-status-added' : isRemoved ? 'td-status-removed' : 'td-status-changed';
+      const tr = document.createElement('tr');
+      tr.className = rowClass;
+      tr.innerHTML = '<td><span class="td-mo-type">' + r.kgMoType + '</span></td>' +
+        '<td class="td-param">' + r.param + '</td>' +
+        '<td class="' + v1Class + '">' + r.v1 + '</td>' +
+        '<td class="' + v2Class + '">' + r.v2 + '</td>' +
+        '<td class="' + statusCls + '">' + status + '</td>';
+      tbody.appendChild(tr);
+    }
+    document.getElementById('kgPreviewCount').textContent = 'showing first ' + Math.min(150, results.diffs.length) + ' of ' + results.diffs.length.toLocaleString();
+
+    kgSetProgress(100, 'Done!', '');
+    await kgTick();
+    pw.classList.remove('show');
+    rw.classList.add('show');
+  } catch(err) {
+    pw.classList.remove('show');
+    kgShowError('Comparison failed: ' + err.message);
+  }
+  document.getElementById('kgRunBtn').disabled = false;
+}
+
+async function kgDownloadExcel() {
+  if (!kgLastResults) return;
+  const btn = document.getElementById('kgDlBtn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Building Excel with colors...';
+
+  try {
+    const {diffs, only1, only2} = kgLastResults;
+    const n1 = kgNodeNames[1], n2 = kgNodeNames[2];
+    const tag1 = n1 === n2 ? n1+'_File1' : n1;
+    const tag2 = n1 === n2 ? n2+'_File2' : n2;
+    const wb = new ExcelJS.Workbook();
+    wb.creator = 'kgetall Compare Tool'; wb.created = new Date();
+
+    const FILL_HDR   = {type:'pattern', pattern:'solid', fgColor:{argb:'FF1F4E79'}};
+    const FILL_MO    = {type:'pattern', pattern:'solid', fgColor:{argb:'FFCFE2F3'}};
+    const FILL_CHNG  = {type:'pattern', pattern:'solid', fgColor:{argb:'FFFFF2CC'}};
+    const FILL_ONLY2 = {type:'pattern', pattern:'solid', fgColor:{argb:'FFE2EFDA'}};
+    const FILL_ONLY1 = {type:'pattern', pattern:'solid', fgColor:{argb:'FFFCE4D6'}};
+    const FONT_HDR  = {name:'Arial', bold:true, color:{argb:'FFFFFFFF'}, size:10};
+    const FONT_BOLD = {name:'Arial', bold:true, size:9};
+    const FONT_NORM = {name:'Arial', size:9};
+    const FONT_MO   = {name:'Arial', bold:true, size:9, color:{argb:'FF1F4E79'}};
+    const BD = {top:{style:'thin',color:{argb:'FFBFBFBF'}},bottom:{style:'thin',color:{argb:'FFBFBFBF'}},left:{style:'thin',color:{argb:'FFBFBFBF'}},right:{style:'thin',color:{argb:'FFBFBFBF'}}};
+
+    function styleHdr(row) {
+      row.eachCell(c => { c.fill=FILL_HDR; c.font=FONT_HDR; c.alignment={horizontal:'center',vertical:'middle'}; c.border=BD; });
+      row.height = 20;
+    }
+    function styleRow(row, fill, font) {
+      row.eachCell({includeEmpty:true}, c => { c.fill=fill; c.font=font||FONT_NORM; c.border=BD; c.alignment={horizontal:'left',vertical:'middle'}; });
+    }
+
+    // Summary sheet
+    const wsSUM = wb.addWorksheet('Summary');
+    wsSUM.columns = [{width:36},{width:24}];
+    const tRow = wsSUM.addRow(['Comparison:  ' + tag1 + '  vs  ' + tag2]);
+    wsSUM.mergeCells('A1:B1');
+    tRow.getCell(1).fill=FILL_HDR; tRow.getCell(1).font={name:'Arial',bold:true,size:13,color:{argb:'FFFFFFFF'}}; tRow.getCell(1).alignment={horizontal:'center',vertical:'middle'}; tRow.height=30;
+    wsSUM.addRow([]);
+    wsSUM.addRow(['Node 1', n1]);
+    wsSUM.addRow(['Node 2', n2]);
+    wsSUM.addRow(['Generated', new Date().toLocaleString()]);
+    wsSUM.addRow([]);
+    styleHdr(wsSUM.addRow(['Metric','Count']));
+    const r1=wsSUM.addRow(['Parameter Differences', diffs.length]); r1.getCell(1).font=FONT_BOLD; r1.getCell(2).fill=FILL_CHNG;
+    const r2=wsSUM.addRow(['MOs only in '+tag1, only1.length]); r2.getCell(1).font=FONT_BOLD; r2.getCell(2).fill=FILL_ONLY1;
+    const r3=wsSUM.addRow(['MOs only in '+tag2, only2.length]); r3.getCell(1).font=FONT_BOLD; r3.getCell(2).fill=FILL_ONLY2;
+    wsSUM.addRow([]);
+    wsSUM.addRow(['COLOR LEGEND','']).getCell(1).font=FONT_BOLD;
+    [['Yellow — Value Changed',''],['Green — Only in '+tag2,''],['Orange/Red — Only in '+tag1,''],['Light Blue — MO Header Row','']].forEach((l,i)=>{
+      const lr=wsSUM.addRow(l); lr.getCell(1).fill=[FILL_CHNG,FILL_ONLY2,FILL_ONLY1,FILL_MO][i]; lr.getCell(1).font=FONT_NORM;
+    });
+
+    // Parameter Differences sheet
+    const wsDIFF = wb.addWorksheet('Parameter_Differences');
+    const h1=tag1, h2=tag2;
+    wsDIFF.columns=[{header:'MO Type',width:22},{header:'Normalized MO',width:65},{header:h1+' MO',width:50},{header:h2+' MO',width:50},{header:'Parameter',width:36},{header:h1+' Value',width:42},{header:h2+' Value',width:42},{header:'Status',width:18}];
+    styleHdr(wsDIFF.getRow(1));
+    wsDIFF.views=[{state:'frozen',ySplit:1}];
+    for (const r of diffs) {
+      const isAdded=r.v1==='-- NOT PRESENT --', isRemoved=r.v2==='-- NOT PRESENT --';
+      const status=isAdded?'New in '+n2:isRemoved?'Only in '+n1:'Changed';
+      const fill=isAdded?FILL_ONLY2:isRemoved?FILL_ONLY1:FILL_CHNG;
+      const row=wsDIFF.addRow([r.kgMoType,r.moNorm,r.mo1,r.mo2,r.param,r.v1,r.v2,status]);
+      styleRow(row, fill);
+      row.getCell(5).font={name:'Arial',bold:true,size:9};
+    }
+
+    // Only in Node1 sheet
+    const wsN1 = wb.addWorksheet(('Only_in_'+tag1).substring(0,31));
+    wsN1.columns=[{header:'MO Type',width:22},{header:'MO Path',width:75},{header:'Parameter',width:36},{header:'Value',width:55}];
+    styleHdr(wsN1.getRow(1)); wsN1.views=[{state:'frozen',ySplit:1}];
+    for (const item of only1) {
+      styleRow(wsN1.addRow([item.kgMoType, item.mo,'','']), FILL_MO, FONT_MO);
+      for (const [p,v] of Object.entries(item.params)) {
+        if (p.startsWith('zzz')) continue;
+        styleRow(wsN1.addRow(['','',p,String(v)]), FILL_ONLY1, FONT_NORM);
       }
     }
-    range.e.c=newColNum;ws['!ref']=XLSX.utils.encode_range(range);
-    if(!ws['!cols'])ws['!cols']=[];while(ws['!cols'].length<=newColNum)ws['!cols'].push({});ws['!cols'][newColNum]={wch:15};
-    var outBuf=XLSX.write(wb,{bookType:'xlsx',type:'array',cellStyles:true});
-    var blob=new Blob([outBuf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
-    var url=URL.createObjectURL(blob);
-    var origName=glFileInput.files[0].name.replace(/\.[^.]+$/,'');
-    var filename=origName+'_SearchResult.xlsx';
-    summaryRow.style.display='grid';
-    [{label:'Total Rows',value:total},{label:'Match',value:matched},{label:'No Match',value:total-matched}].forEach(function(item){
-      summaryRow.innerHTML+='<div class="sum-item"><div class="sum-label">'+item.label+'</div><div class="sum-val">'+item.value+'</div></div>';
-    });
-    var a=document.createElement('a');a.className='dl-btn';a.href=url;a.download=filename;
-    a.innerHTML='<div>\u2b07\ufe0f Download Result</div><span>'+filename+'</span>';
-    dlSection.appendChild(a);
-    setGLStatus('Done! '+matched+' matches found out of '+total+' rows.');
-  } catch(err){setGLStatus('Error: '+err.message);console.error(err);}
-  finally{btn.disabled=false;sp.style.display='none';bt.textContent='\uD83D\uDD0D Run Parameter Search';}
+
+    // Only in Node2 sheet
+    const wsN2 = wb.addWorksheet(('Only_in_'+tag2).substring(0,31));
+    wsN2.columns=[{header:'MO Type',width:22},{header:'MO Path',width:75},{header:'Parameter',width:36},{header:'Value',width:55}];
+    styleHdr(wsN2.getRow(1)); wsN2.views=[{state:'frozen',ySplit:1}];
+    for (const item of only2) {
+      styleRow(wsN2.addRow([item.kgMoType, item.mo,'','']), FILL_MO, FONT_MO);
+      for (const [p,v] of Object.entries(item.params)) {
+        if (p.startsWith('zzz')) continue;
+        styleRow(wsN2.addRow(['','',p,String(v)]), FILL_ONLY2, FONT_NORM);
+      }
+    }
+
+    const buf = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buf], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    saveAs(blob, tag1+'_vs_'+tag2+'_comparison.xlsx');
+
+  } catch(err) {
+    kgShowError('Excel generation failed: ' + err.message);
+  }
+
+  btn.disabled = false;
+  btn.textContent = '⬇ Download Colored Excel Report';
 }
 
 // ══ LOCK / UNLOCK TOOL ══
