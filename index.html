@@ -132,8 +132,29 @@
     <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
     <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.24.7/babel.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+      // ===== Supabase config =====
+      // Replace these with your project's values from
+      // Supabase Dashboard -> Project Settings -> API
+      const SUPABASE_URL = "https://hmfxkahrgvjmnzmotkns.supabase.co";
+      const SUPABASE_ANON_KEY = "sb_publishable_1D5EmW2xsOXHpmm-InXPEg_3X4GBiwJ";
+      window.sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    </script>
     <script type="text/babel" data-presets="react">
 const { useState, useEffect, useRef, useMemo, useCallback } = React;
+const sb = window.sb;
+
+// Build the { name, email, initials } object the rest of the app expects,
+// straight from the Supabase Auth user — no database table involved.
+// Access control is simply: does this person have an account in
+// Supabase Authentication -> Users? Add/remove them there to grant/revoke access.
+function loadProfile(authUser) {
+  const name = (authUser.email || "").split("@")[0];
+  const initials = name.slice(0, 2).toUpperCase() || "U";
+  return { name, email: authUser.email, initials };
+}
+
 
 // ===== src/data.js =====
 const TEAM_MEMBERS = [
@@ -309,18 +330,26 @@ function Login({ onLogin }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
     if (!username.trim() || !password.trim()) {
-      setError("Enter a username and password to continue.");
+      setError("Enter your email and password to continue.");
       return;
     }
     setError("");
     setLoading(true);
-    setTimeout(() => {
+    const { data, error: authError } = await sb.auth.signInWithPassword({
+      email: username.trim(),
+      password: password,
+    });
+    if (authError) {
       setLoading(false);
-      onLogin(username, "operator");
-    }, 650);
+      setError(authError.message);
+      return;
+    }
+    const profile = await loadProfile(data.user);
+    setLoading(false);
+    onLogin(profile);
   }
 
   return (
@@ -368,13 +397,14 @@ function Login({ onLogin }) {
           </div>
 
           <form onSubmit={handleSubmit}>
-            <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "var(--navy-700)", marginBottom: 6 }}>Username</label>
+            <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "var(--navy-700)", marginBottom: 6 }}>Email</label>
             <div style={{ position: "relative", marginBottom: 16 }}>
               <span className="msym" style={{ position: "absolute", left: 14, top: 11, fontSize: 19, color: "var(--slate-400)" }}>person</span>
               <input
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="alex.rivera"
+                type="email"
+                placeholder="  "
                 style={inputStyle}
                 onFocus={(e) => (e.target.style.borderColor = "var(--blue-500)")}
                 onBlur={(e) => (e.target.style.borderColor = "rgba(148,163,184,0.4)")}
@@ -432,7 +462,7 @@ function Login({ onLogin }) {
           </form>
 
           <p style={{ textAlign: "center", fontSize: 12, color: "var(--slate-400)", marginTop: 26 }}>
-            Demo build — any username and password signs you in.
+            Accounts are provisioned by your administrator.
           </p>
         </div>
       </div>
@@ -538,7 +568,7 @@ function TopBar({ user, onNavigate, onLogout, active, brand }) {
           <div style={{ textAlign: "left" }}>
             <div style={{ fontSize: 13.5, fontWeight: 600, lineHeight: 1.2 }}>{user.name}</div>
             <div className="mono" style={{ fontSize: 11, color: "var(--slate-400)", lineHeight: 1.2 }}>
-              {user.role === "admin" ? "System Admin" : "Standard Operator"}
+              {user.email}
             </div>
           </div>
         </button>
@@ -675,7 +705,9 @@ function Dashboard({ user, onNavigate, onLogout, onElevate, onOpenTool }) {
       return;
     }
     setPinError("");
-    onElevate();
+    // Real admin access is granted via the `role` column on your Supabase
+    // `profiles` table, not a client-side PIN — this just routes to the
+    // admin area, which will show an access-denied screen for non-admins.
     setElevating(false);
     onNavigate("admin");
   }
@@ -1123,20 +1155,7 @@ function Admin({ user, onNavigate, onLogout }) {
 
 // ===== src/App.js =====
 
-function AccessDenied({ onBack, onElevate }) {
-  const [pin, setPin] = useState("");
-  const [error, setError] = useState("");
-
-  function handleSubmit(e) {
-    e.preventDefault();
-    if (pin.trim().length < 4) {
-      setError("Enter the 4+ digit admin PIN to continue.");
-      return;
-    }
-    setError("");
-    onElevate();
-  }
-
+function AccessDenied({ onBack }) {
   return (
     <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--navy-950)", padding: 24 }}>
       <div className="fade-in" style={{ maxWidth: 400, width: "100%", textAlign: "center", color: "white" }}>
@@ -1145,37 +1164,12 @@ function AccessDenied({ onBack, onElevate }) {
         </div>
         <h1 className="display" style={{ fontSize: 23, fontWeight: 700, margin: "0 0 10px" }}>Admin access required</h1>
         <p style={{ fontSize: 14, color: "var(--slate-300)", lineHeight: 1.6, margin: "0 0 26px" }}>
-          This area is restricted to system administrators. Enter the admin PIN to elevate this session, or head back to your dashboard.
+          This area is restricted to system administrators. Ask an existing admin to grant your account the admin role, then sign in again.
         </p>
 
-        <form onSubmit={handleSubmit} style={{ textAlign: "left" }}>
-          <input
-            value={pin}
-            onChange={(e) => setPin(e.target.value)}
-            placeholder="Admin PIN (any 4+ digits)"
-            inputMode="numeric"
-            style={{
-              width: "100%",
-              height: 44,
-              borderRadius: 10,
-              border: "1px solid rgba(148,163,184,0.35)",
-              background: "rgba(255,255,255,0.05)",
-              color: "white",
-              padding: "0 14px",
-              fontSize: 14,
-              outline: "none",
-              marginBottom: error ? 8 : 16,
-            }}
-          />
-          {error && <p style={{ color: "#ff9a9d", fontSize: 13, margin: "0 0 14px" }}>{error}</p>}
-          <button type="submit" className="btn btn-primary btn-block" style={{ height: 44, marginBottom: 10 }}>
-            <span className="msym" style={{ fontSize: 18 }}>lock_open</span>
-            Elevate access
-          </button>
-          <button type="button" onClick={onBack} className="btn btn-block" style={{ height: 44, background: "rgba(255,255,255,0.06)", color: "white", border: "1px solid rgba(255,255,255,0.12)" }}>
-            Back to dashboard
-          </button>
-        </form>
+        <button type="button" onClick={onBack} className="btn btn-block" style={{ height: 44, background: "rgba(255,255,255,0.06)", color: "white", border: "1px solid rgba(255,255,255,0.12)" }}>
+          Back to dashboard
+        </button>
       </div>
     </div>
   );
@@ -1210,32 +1204,44 @@ function App() {
     return () => window.removeEventListener("message", onMessage);
   }, []);
 
-  // If returning from the audit tool via ?skip_login=true, restore the session
+  const [checkingSession, setCheckingSession] = useState(true);
+
+  // On first load (including returning from an embedded tool iframe via
+  // ?skip_login=true), check Supabase for an existing session so the user
+  // isn't forced to log in again on every page/refresh.
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("skip_login") === "true") {
-      const savedName = sessionStorage.getItem("tp_username") || "User";
-      const savedRole = sessionStorage.getItem("tp_role") || "operator";
-      const initials = savedName.split(" ").map((p) => p[0]).join("").slice(0, 2).toUpperCase();
-      setUser({ name: savedName, role: savedRole, initials, email: `${savedName.split(" ")[0].toLowerCase()}@toolportal.io` });
-      setRoute("dashboard");
-      // Clean the URL so refreshing doesn't keep the param
-      window.history.replaceState({}, "", window.location.pathname);
+    async function restoreSession() {
+      const { data: { session } } = await sb.auth.getSession();
+      if (session) {
+        const profile = await loadProfile(session.user);
+        setUser(profile);
+      }
+      setCheckingSession(false);
+
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("skip_login") === "true") {
+        window.history.replaceState({}, "", window.location.pathname);
+      }
     }
+    restoreSession();
+
+    // Keep `user` in sync if the session is refreshed or expires elsewhere
+    // (e.g. another tab, or a token refresh).
+    const { data: listener } = sb.auth.onAuthStateChange(async (event, session) => {
+      if (event === "SIGNED_OUT") {
+        setUser(null);
+      }
+    });
+    return () => listener.subscription.unsubscribe();
   }, []);
 
-  function handleLogin(username, role) {
-    const seed = username.trim() || (role === "admin" ? "Alex Rivera" : "Alex Mercer");
-    const initials = seed.split(" ").map((p) => p[0]).join("").slice(0, 2).toUpperCase();
-    sessionStorage.setItem("tp_username", seed);
-    sessionStorage.setItem("tp_role", role);
-    setUser({ name: seed, role, initials, email: `${seed.split(" ")[0].toLowerCase()}@toolportal.io` });
+  function handleLogin(profile) {
+    setUser(profile);
     setRoute("dashboard");
   }
 
-  function handleLogout() {
-    sessionStorage.removeItem("tp_username");
-    sessionStorage.removeItem("tp_role");
+  async function handleLogout() {
+    await sb.auth.signOut();
     setUser(null);
     setRoute("dashboard");
   }
@@ -1248,24 +1254,20 @@ function App() {
     setRoute(target);
   }
 
-  function handleElevate() {
-    setUser((u) => (u ? { ...u, role: "admin" } : u));
-    setRoute("admin");
+  if (checkingSession) {
+    return (
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--slate-400)", fontSize: 14 }}>
+        Loading…
+      </div>
+    );
   }
 
   if (!user) {
     return <Login onLogin={handleLogin} />;
   }
 
-  if (route === "admin") {
-    if (user.role !== "admin") {
-      return <AccessDenied onBack={() => setRoute("dashboard")} onElevate={handleElevate} />;
-    }
+  if (route === "admin" || route === "admin-gate") {
     return <Admin user={user} onNavigate={handleNavigate} onLogout={handleLogout} />;
-  }
-
-  if (route === "admin-gate") {
-    return <AccessDenied onBack={() => setRoute("dashboard")} onElevate={handleElevate} />;
   }
 
   if (route === "tool-frame" && activeTool) {
@@ -1277,7 +1279,6 @@ function App() {
       user={user}
       onNavigate={handleNavigate}
       onLogout={handleLogout}
-      onElevate={handleElevate}
       onOpenTool={openTool}
     />
   );
