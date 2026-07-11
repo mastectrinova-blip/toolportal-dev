@@ -109,6 +109,8 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 .sc-check{width:18px;height:18px;border:2px solid var(--border);border-radius:4px;display:flex;align-items:center;justify-content:center;transition:all 0.15s;flex-shrink:0;background:#fff;}
 .script-card.selected .sc-check{background:var(--accent);border-color:var(--accent);}
 .script-card.selected .sc-check::after{content:'\2713';color:#fff;font-size:11px;font-weight:800;}
+.sc-check.selected{background:var(--accent);border-color:var(--accent);}
+.sc-check.selected::after{content:'\2713';color:#fff;font-size:11px;font-weight:800;}
 .sc-name{font-size:14px;font-weight:700;color:var(--text);}
 .fga-gen-opts{margin-top:12px;padding-top:12px;border-top:1px solid var(--border);display:none;}
 .script-card.selected .fga-gen-opts{display:block;}
@@ -242,9 +244,9 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
       <div class="nav-section-title">Audit Tool</div>
       <div class="nav-item active" id="nav-audit" onclick="showPanel('audit')">&#128269; Audit Tool</div>
       <div class="nav-item sub" id="nav-generator" onclick="showPanel('generator')">&#9889; Delta Scripts</div>
-      <div class="nav-item sub" id="nav-kgetall" onclick="showPanel('kgetall')">&#128203; KGetAll Comparison Tool</div>
       <div class="nav-item sub" id="nav-lockunlock" onclick="showPanel('lockunlock')">&#128274; Lock / Unlock</div>
       <div class="nav-item sub" id="nav-manualcmd" onclick="showPanel('manualcmd')">&#128221; Manual Cmd</div>
+      <div class="nav-item sub" id="nav-kgetall" onclick="showPanel('kgetall')">&#128203; KGetAll Comparison Tool</div>
     </div>
     <div class="sidebar-footer">
       <button class="back-btn" onclick="trinovaBackToPortal()">
@@ -267,11 +269,6 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
           <div class="sub-menu-card-name">Delta Scripts</div>
           <div class="sub-menu-card-arrow">Open &#8594;</div>
         </div>
-        <div class="sub-menu-card" onclick="showPanel('kgetall')">
-          <div class="sub-menu-card-icon">&#128203;</div>
-          <div class="sub-menu-card-name">KGetAll Comparison Tool</div>
-          <div class="sub-menu-card-arrow">Open &#8594;</div>
-        </div>
         <div class="sub-menu-card" onclick="showPanel('lockunlock')">
           <div class="sub-menu-card-icon">&#128274;</div>
           <div class="sub-menu-card-name">Lock / Unlock</div>
@@ -280,6 +277,11 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
         <div class="sub-menu-card" onclick="showPanel('manualcmd')">
           <div class="sub-menu-card-icon">&#128221;</div>
           <div class="sub-menu-card-name">Manual Cmd</div>
+          <div class="sub-menu-card-arrow">Open &#8594;</div>
+        </div>
+        <div class="sub-menu-card" onclick="showPanel('kgetall')">
+          <div class="sub-menu-card-icon">&#128203;</div>
+          <div class="sub-menu-card-name">KGetAll Comparison Tool</div>
           <div class="sub-menu-card-arrow">Open &#8594;</div>
         </div>
       </div>
@@ -292,7 +294,6 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
           <div class="section-title"><span class="step-badge">1</span> Upload CIQ (Excel)</div>
           <div class="upload-zone" id="ciqZone">
             <input type="file" id="ciqFile" accept=".xlsx,.xls" />
-            <div class="upload-icon">&#128202;</div>
             <p><strong>Click to upload</strong> or drag &amp; drop</p>
             <div class="file-badge" id="ciqBadge"></div>
           </div>
@@ -357,6 +358,25 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
                 <div class="sc-check" id="cb-v8"></div>
                 <span class="sc-name">NDS Delta V8</span>
               </div>
+            </div>
+            <div class="script-card" id="opt-v9" onclick="toggleScript('v9')">
+              <div class="sc-header">
+                <div class="sc-check" id="cb-v9"></div>
+                <span class="sc-name">NDS V9/V10</span>
+              </div>
+            </div>
+            <div class="script-card" id="opt-v11" onclick="toggleScript('v11')">
+              <div class="sc-header">
+                <div class="sc-check" id="cb-v11"></div>
+                <span class="sc-name">NDS Delta V11</span>
+              </div>
+            </div>
+          </div>
+          <!-- Consolidated NDS Delta checkbox -->
+          <div style="margin-top:14px;padding:12px 16px;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;display:flex;align-items:center;gap:12px;cursor:pointer;" onclick="toggleConsolidated()">
+            <div class="sc-check" id="cb-consolidated" style="flex-shrink:0;width:20px;height:20px;"></div>
+            <div>
+              <div style="font-size:14px;font-weight:700;color:var(--text);">&#128230; Consolidated NDS Delta</div>
             </div>
           </div>
         </div>
@@ -505,7 +525,6 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
           <div class="section-title"><span class="step-badge">3</span> Upload ST Cell Output (.txt)</div>
           <div class="upload-zone" id="luZone">
             <input type="file" id="luFile" accept=".txt" onchange="luReadFile(this)" />
-            <div class="upload-icon">&#128196;</div>
             <p><strong>Click to upload</strong> or drag &amp; drop</p>
             <div class="file-badge" id="luBadge"></div>
           </div>
@@ -542,7 +561,6 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
           <div class="section-title"><span class="step-badge">1</span> Upload CIQ (Excel)</div>
           <div class="upload-zone" id="manualCiqZone">
             <input type="file" id="manualCiqFile" accept=".xlsx,.xls" />
-            <div class="upload-icon">&#128202;</div>
             <p><strong>Click to upload</strong> or drag &amp; drop</p>
             <div class="file-badge" id="manualCiqBadge"></div>
           </div>
@@ -798,7 +816,15 @@ function trinovaBackToPortal() {
   }
 }
 
-var sel={nds:false,fga:false,v3:false,v4:false,v5:false,v6:false,v7:false,v8:false};
+var sel={nds:false,fga:false,v3:false,v4:false,v5:false,v6:false,v7:false,v8:false,v9:false,v11:false};
+var consolidatedActive=false;
+var consolidatedParts=[];  // collects [label, content] for each version if consolidated
+
+function toggleConsolidated(){
+  consolidatedActive=!consolidatedActive;
+  var cb=document.getElementById('cb-consolidated');
+  cb.classList.toggle('selected',consolidatedActive);
+}
 var fgaGen='auto';
 
 var breadcrumbs={audit:'Audit Tool',generator:'Audit Tool / Delta Scripts',kgetall:'Audit Tool / KGetAll Comparison Tool',lockunlock:'Audit Tool / Lock & Unlock',manualcmd:'Audit Tool / Manual Cmd'};
@@ -1065,6 +1091,10 @@ async function pickFolder(){
 }
 
 async function addDl(content, filename, label){
+  // Collect into consolidated if active and this is an NDS version script (not FGA/cmedit)
+  if(consolidatedActive && filename.indexOf('_NDS_DELTA')>=0 && filename.indexOf('_FGA_')< 0){
+    consolidatedParts.push({label:label,content:content});
+  }
   var blob = new Blob([content], {type:'text/plain'});
   if(pickedFolderHandle){
     try {
@@ -1149,8 +1179,9 @@ async function generate(){
   var btn=document.getElementById('genBtn'),sp=document.getElementById('spinner'),bt=document.getElementById('genBtnTxt');
   document.getElementById('dlSection').innerHTML='';
   if(!ciqInput.files[0]){alert('Please upload a CIQ Excel file');return;}
-  if(!sel.nds&&!sel.fga&&!sel.v3&&!sel.v4&&!sel.v5&&!sel.v6&&!sel.v7&&!sel.v8){alert('Please select at least one script');return;}
+  if(!sel.nds&&!sel.fga&&!sel.v3&&!sel.v4&&!sel.v5&&!sel.v6&&!sel.v7&&!sel.v8&&!sel.v9&&!sel.v11){alert('Please select at least one script');return;}
   btn.disabled=true;sp.style.display='block';bt.textContent='Processing...';
+  consolidatedParts=[];  // reset for this run (global var, shared with addDl())
   try {
     var ab=await ciqInput.files[0].arrayBuffer();
     var wb=XLSX.read(ab,{type:'array'});
@@ -2170,8 +2201,129 @@ async function generate(){
       await addDl(v8Out,SITE_ID+'_NDS_DELTA_V8.txt','NDS Delta V8 Script (Standalone)');
     }
 
+    // ══ V9_V10 — STANDALONE INDEPENDENT TEMPLATE ══
+    if(sel.v9){
+      var v9out=[];
+      var v9add=function(fdnSuffix,params){
+        v9out.push('set');
+        v9out.push('FDN : "SubNetwork=ONRM_ROOT_MO,MeContext='+SITE_ID+',ManagedElement='+SITE_ID+','+fdnSuffix+'"');
+        Object.keys(params).forEach(function(k){v9out.push(k+' : '+params[k]);});
+        v9out.push('');
+      };
+
+      // 5G presence flags
+      var v9Has5G=Object.keys(g5).length>0;
+      var v9HasN260=!!(g5['N260']||g5['n260']);
+      var v9HasLbMb=!!(g5['850']||g5['PCS']||g5['AWS']);
+      var v9HasCBand=!!(g5['n077']);
+
+      // All SA sectors (any band)
+      var v9SAllCells=[];
+      Object.keys(saSectors).forEach(function(band){['ALPHA','BETA','GAMMA'].forEach(function(s){(saSectors[band][s]||[]).forEach(function(c){v9SAllCells.push(c);});});});
+
+      // n077 cells
+      var v9CBandCells=[];
+      ['ALPHA','BETA','GAMMA'].forEach(function(s){(g5['n077']||{})[s]&&g5['n077'][s].forEach(function(c){v9CBandCells.push(c);});});
+
+      // 850/PCS/AWS cells
+      var v9LbMbCells=[];
+      ['850','PCS','AWS'].forEach(function(band){['ALPHA','BETA','GAMMA'].forEach(function(s){(g5[band]||{})[s]&&g5[band][s].forEach(function(c){v9LbMbCells.push(c);});});});
+
+      // ── V9_V10 COMMANDS ──
+
+      // CXC4012547: ACTIVATED if 5G present and NO N260; DEACTIVATED if N260 present
+      if(v9HasN260){
+        v9add('SystemFunctions=1,Lm=1,FeatureState=CXC4012547',{featureState:'DEACTIVATED'});
+      } else if(v9Has5G){
+        v9add('SystemFunctions=1,Lm=1,FeatureState=CXC4012547',{featureState:'ACTIVATED'});
+      }
+
+      // CXC4012371: ACTIVATED if LB/MB (850/PCS/AWS) present and NO C-Band
+      // DEACTIVATED if C-Band (n077) present (alone or with LB/MB)
+      if(v9HasCBand){
+        v9add('SystemFunctions=1,Lm=1,FeatureState=CXC4012371',{featureState:'DEACTIVATED'});
+      } else if(v9HasLbMb){
+        v9add('SystemFunctions=1,Lm=1,FeatureState=CXC4012371',{featureState:'ACTIVATED'});
+      }
+
+      // n077 pdcchLaSinrOffset:-15
+      v9CBandCells.forEach(function(c){v9add('GNBDUFunction=1,NRCellDU='+c,{pdcchLaSinrOffset:'-15'});});
+
+      // 850/PCS/AWS pdcchLaSinrOffset:-10
+      v9LbMbCells.forEach(function(c){v9add('GNBDUFunction=1,NRCellDU='+c,{pdcchLaSinrOffset:'-10'});});
+
+      // SA sectors McfbCellProfile rsrpCellCandidate
+      v9SAllCells.forEach(function(c){v9add('GNBCUCPFunction=1,Mcfb=1,McfbCellProfile='+c+',McfbCellProfileUeCfg=Base',{rsrpCellCandidate:'{threshold=-129}'});});
+
+      // AIA_B_Premium: if any 5G sectors present
+      if(v9Has5G){
+        v9add('GNBCUCPFunction=1,UeGroupSelection=1,UeServiceGroupDefinition=AIA_B_Premium',{selectionCriteria:'"(rfsp==34||spid==34)&&(5qi==7||qci==7)"'});
+      }
+
+      var v9Out=v9out.join('\n').replace(/\n{3,}/g,'\n\n').trim()+'\n';
+      await addDl(v9Out,SITE_ID+'_NDS_DELTA_V9_V10.txt','NDS Delta V9/V10 Script (Standalone)');
+    }
+
+    // ══ V11 — STANDALONE INDEPENDENT TEMPLATE ══
+    if(sel.v11){
+      var v11out=[];
+      var v11add=function(fdnSuffix,params){
+        v11out.push('set');
+        v11out.push('FDN : "SubNetwork=ONRM_ROOT_MO,MeContext='+SITE_ID+',ManagedElement='+SITE_ID+','+fdnSuffix+'"');
+        Object.keys(params).forEach(function(k){v11out.push(k+' : '+params[k]);});
+        v11out.push('');
+      };
+
+      // n077 cells (C-Band/DoD)
+      var v11CBandCells=[];
+      ['ALPHA','BETA','GAMMA'].forEach(function(s){(g5['n077']||{})[s]&&g5['n077'][s].forEach(function(c){v11CBandCells.push(c);});});
+
+      // 850/PCS/AWS cells (non C-Band)
+      var v11LbMbCells=[];
+      ['850','PCS','AWS'].forEach(function(band){['ALPHA','BETA','GAMMA'].forEach(function(s){(g5[band]||{})[s]&&g5[band][s].forEach(function(c){v11LbMbCells.push(c);});});});
+
+      // SA/NSA overall check
+      var v11IsSA=Object.keys(saSectors).length>0;
+      var v11IsNSA=Object.keys(nsaSectors).length>0;
+
+      // ── V11 COMMANDS ──
+
+      // n077: McpcPSCellProfile rsrpCritical -125
+      v11CBandCells.forEach(function(c){v11add('GNBCUCPFunction=1,Mcpc=1,McpcPSCellProfile='+c+',McpcPSCellProfileUeCfg=Base',{rsrpCritical:'{threshold=-125}'});});
+
+      // 850/PCS/AWS: McpcPSCellProfile rsrpCritical -115
+      v11LbMbCells.forEach(function(c){v11add('GNBCUCPFunction=1,Mcpc=1,McpcPSCellProfile='+c+',McpcPSCellProfileUeCfg=Base',{rsrpCritical:'{threshold=-115}'});});
+
+      // SA: CXC4012591 + CXC4012736 ACTIVATED
+      if(v11IsSA){
+        v11add('SystemFunctions=1,Lm=1,FeatureState=CXC4012591',{featureState:'ACTIVATED'});
+        v11add('SystemFunctions=1,Lm=1,FeatureState=CXC4012736',{featureState:'ACTIVATED'});
+      }
+
+      // NSA: CXC4012736 + CXC4012591 DEACTIVATED
+      if(v11IsNSA){
+        v11add('SystemFunctions=1,Lm=1,FeatureState=CXC4012736',{featureState:'DEACTIVATED'});
+        v11add('SystemFunctions=1,Lm=1,FeatureState=CXC4012591',{featureState:'DEACTIVATED'});
+      }
+
+      var v11Out=v11out.join('\n').replace(/\n{3,}/g,'\n\n').trim()+'\n';
+      await addDl(v11Out,SITE_ID+'_NDS_DELTA_V11.txt','NDS Delta V11 Script (Standalone)');
+    }
+
     var folder=pickedFolderHandle?pickedFolderHandle.name:'Downloads';
     document.getElementById('dlSection').innerHTML='';
+
+    // Generate consolidated file if active
+    if(consolidatedActive&&consolidatedParts.length>0){
+      var consolidated='';
+      consolidatedParts.forEach(function(part){
+        consolidated+='';
+        consolidated+=part.content;
+      });
+      consolidated=consolidated.replace(/\n{3,}/g,'\n\n').trim()+'\n';
+      await addDl(consolidated,SITE_ID+'_consolidated_NDS_Delta.txt','Consolidated NDS Delta');
+    }
+
     alert('\u2705 Scripts generated and saved to "' + folder + '" folder successfully!');
 
   } catch(err){alert('Error: '+err.message);console.error(err);}
