@@ -471,7 +471,17 @@ buf.read()
 
   } catch(err) {
     clearInterval(tick);
-    toast("Error: " + err.message, "err");
+    const rawMsg = err && err.message ? err.message : String(err);
+    const friendlyTriggers = [
+      "Colors must be aRGB",
+      "could not read stylesheet",
+      "Unable to read workbook"
+    ];
+    if (friendlyTriggers.some(t => rawMsg.includes(t))) {
+      toast("Unable to read the Excel file. The workbook appears to be corrupted or contains invalid formatting. Please open the file, save it as a new .xlsx file, and upload it again.", "err");
+    } else {
+      toast("Error: " + rawMsg, "err");
+    }
     console.error(err);
   } finally {
     setTimeout(() => { document.getElementById("prog").style.display="none"; fill.style.width="0%"; }, 800);
