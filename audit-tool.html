@@ -250,7 +250,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
     </div>
     <div class="sidebar-footer">
       <button class="back-btn" onclick="trinovaBackToPortal()">
-        &#8592; Back to ToolPortal
+        &#8592; Back to Home
       </button>
     </div>
   </div>
@@ -308,6 +308,15 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
                 <div class="sc-check" id="cb-nds"></div>
                 <span class="sc-name">NDS Delta</span>
               </div>
+              <div class="fga-gen-opts">
+                <div class="gen-label">Options</div>
+                <div class="gen-btns">
+                  <button class="gen-btn" id="nds-hicap" onclick="toggleNdsOpt(event,'hicap')">HiCap</button>
+                  <button class="gen-btn" id="nds-dss" onclick="toggleNdsOpt(event,'dss')">DSS</button>
+                  <button class="gen-btn" id="nds-idas" onclick="toggleNdsOpt(event,'idas')">iDAS</button>
+                  <button class="gen-btn" id="nds-fnsa" onclick="toggleNdsOpt(event,'fnsa')">FN_SA</button>
+                </div>
+              </div>
             </div>
             <div class="script-card" id="opt-fga" onclick="toggleScript('fga')">
               <div class="sc-header">
@@ -322,61 +331,6 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
                   <button class="gen-btn" id="fga-g3g4" onclick="setGen(event,'G3G4')">G3 / G4</button>
                 </div>
               </div>
-            </div>
-            <div class="script-card" id="opt-v3" onclick="toggleScript('v3')">
-              <div class="sc-header">
-                <div class="sc-check" id="cb-v3"></div>
-                <span class="sc-name">NDS Delta V3</span>
-              </div>
-            </div>
-            <div class="script-card" id="opt-v4" onclick="toggleScript('v4')">
-              <div class="sc-header">
-                <div class="sc-check" id="cb-v4"></div>
-                <span class="sc-name">NDS Delta V4</span>
-              </div>
-            </div>
-            <div class="script-card" id="opt-v5" onclick="toggleScript('v5')">
-              <div class="sc-header">
-                <div class="sc-check" id="cb-v5"></div>
-                <span class="sc-name">NDS Delta V5</span>
-              </div>
-            </div>
-            <div class="script-card" id="opt-v6" onclick="toggleScript('v6')">
-              <div class="sc-header">
-                <div class="sc-check" id="cb-v6"></div>
-                <span class="sc-name">NDS Delta V6</span>
-              </div>
-            </div>
-            <div class="script-card" id="opt-v7" onclick="toggleScript('v7')">
-              <div class="sc-header">
-                <div class="sc-check" id="cb-v7"></div>
-                <span class="sc-name">NDS Delta V7</span>
-              </div>
-            </div>
-            <div class="script-card" id="opt-v8" onclick="toggleScript('v8')">
-              <div class="sc-header">
-                <div class="sc-check" id="cb-v8"></div>
-                <span class="sc-name">NDS Delta V8</span>
-              </div>
-            </div>
-            <div class="script-card" id="opt-v9" onclick="toggleScript('v9')">
-              <div class="sc-header">
-                <div class="sc-check" id="cb-v9"></div>
-                <span class="sc-name">NDS V9/V10</span>
-              </div>
-            </div>
-            <div class="script-card" id="opt-v11" onclick="toggleScript('v11')">
-              <div class="sc-header">
-                <div class="sc-check" id="cb-v11"></div>
-                <span class="sc-name">NDS Delta V11</span>
-              </div>
-            </div>
-          </div>
-          <!-- Consolidated NDS Delta checkbox -->
-          <div style="margin-top:14px;padding:12px 16px;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;display:flex;align-items:center;gap:12px;cursor:pointer;" onclick="toggleConsolidated()">
-            <div class="sc-check" id="cb-consolidated" style="flex-shrink:0;width:20px;height:20px;"></div>
-            <div>
-              <div style="font-size:14px;font-weight:700;color:var(--text);">&#128230; Consolidated NDS Delta</div>
             </div>
           </div>
         </div>
@@ -804,6 +758,1694 @@ set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext=XXSITEIDXX,ManagedElement=XXSITEIDXX,ENodeBFunction=1,EUtranCellFDD=XXGAMMASECTORXX,EUtranFreqRelation=5330"
 voicePrio : 0</script>
 
+<!-- NDS Delta generator (verbatim Python, executed in-browser via Pyodide) -->
+<script id="PY_NDS_CON" type="text/plain">import os
+import pandas as pd
+import re
+
+
+def parse_bw(bandwidth):
+    try:
+        if bandwidth is None:
+            return None
+
+        val = str(bandwidth).strip()
+
+        if val == "" or val.lower() in ["nan", "none", "n/a"]:
+            return None
+
+        # take first part before "/"
+        val = val.split("/")[0].strip()
+
+        return int(float(val))
+
+    except:
+        return None
+
+def is_slim(bandwidth):
+    if bandwidth is None:
+        return False
+
+    return "/6400" in str(bandwidth).replace(" ", "")
+
+
+
+def evaluate_sheet(df, col_name):
+    if df is None or df.empty or col_name not in df.columns:
+        return False, False  
+    
+    # has_data, is_7digit_valid
+    series = df[col_name].astype(str).str.strip()
+    valid = series[series.ne("") & series.notna()]
+
+    has_data = not valid.empty
+    is_7digit = has_data and valid.str.match(r"^\d{7}$", na=False).any()
+
+    return has_data, is_7digit
+
+
+def NDS_delta_generator(excel_file,node_options):
+
+    all_site_outputs = {}   # ✅ NEW
+
+    # -----------------------------
+    # Helper Functions (UNCHANGED)
+    # -----------------------------
+    def normalize_id(col):
+        return col.apply(lambda x: str(int(x)) if pd.notna(x) else "")
+
+    def load_excel():
+        mixed = pd.read_excel(excel_file, sheet_name="Mixed Mode Info")
+        fiveg = pd.read_excel(excel_file, sheet_name="5G Info")
+        lte = pd.read_excel(excel_file, sheet_name="eUtran Parameters")
+        enb = pd.read_excel(excel_file, sheet_name="eNB Info")
+        gnb = pd.read_excel(excel_file, sheet_name="gNB Info")
+        la_c = pd.read_excel(excel_file, sheet_name="LTE-NR- FreqRelation")
+        la_n = pd.read_excel(excel_file, sheet_name="Nokia_Relations(LTE-NR)")
+        
+
+        for df in [mixed, fiveg, lte, enb, gnb,la_c,la_n]:
+            df.columns = df.columns.str.strip()
+
+        mixed["eNBId"] = normalize_id(mixed["eNBId"])
+        mixed["gNBId"] = normalize_id(mixed["gNBId"])
+        lte["eNBId"] = normalize_id(lte["eNBId"])
+        fiveg["gNBId"] = normalize_id(fiveg["gNBId"])
+        enb["eNBId"] = normalize_id(enb["eNBId"])
+        gnb["gNBId"] = normalize_id(gnb["gNBId"])
+        la_c["GutranFreqRelationID"] = normalize_id(la_c["GutranFreqRelationID"])
+        la_n["GutranFreqRelationID"] = normalize_id(la_n["GutranFreqRelationID"])
+
+                        # 🔥 FILTER ONLY SA
+        sa = pd.DataFrame()
+        if "NSA/SA" in fiveg.columns:
+            fiveg["NSA/SA"] = fiveg["NSA/SA"].astype(str).str.strip().str.upper()
+            sa = fiveg[fiveg["NSA/SA"] == "SA"]
+
+
+        is_3radio = "RRU Type" in fiveg.columns and fiveg["RRU Type"].astype(str).str.contains(r"AIR6419|AIR6449|AIR6472", case=False, na=False).any()
+
+        is_4890radio = "RRU Type" in lte.columns and lte["RRU type"].astype(str).str.contains(r"4890", case=False, na=False).any()
+
+        
+        dss_clean = fiveg.set_index("NRCellDU")["DSS"].astype(str).str.strip().str.upper()
+        sa_clean = fiveg.set_index("NRCellDU")["NSA/SA"].astype(str).str.strip().str.upper()
+        
+        return mixed, fiveg, lte, enb, gnb, sa, sa_clean, dss_clean, is_3radio, is_4890radio, la_n, la_c
+
+    mixed_df, fiveg_df, lte_df, enb_df, gnb_df, sa_df, sa_clean, dss_clean, is_3radio, is_4890radio, la_n, la_c = load_excel()
+
+
+    hicap = node_options.get("HiCap", False)
+    idas = node_options.get("iDAS", False)
+    node_bands = node_options.get("NODE_BANDS", {})
+    dss = node_options.get("DSS", False)
+    la_n_has, la_n_hb = evaluate_sheet(la_n, "GutranFreqRelationID")
+    la_c_has, la_c_hb = evaluate_sheet(la_c, "GutranFreqRelationID")
+
+    lte_anchor = la_n_has or la_c_has
+
+    lte_anchor_hb = ((la_n_has and la_n_hb) or (la_c_has and la_c_hb))
+
+
+###    # -----------------------------Delta Here-----------------------------
+    
+    def delta_script(siteid):
+        script = []
+
+        if not b14_df.empty:
+            script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4011557"
+featureState : ACTIVATED
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4011814"
+featureState : ACTIVATED
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012258"
+featureState : ACTIVATED
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBCUCPFunction=1,AdmissionControl=1"
+dlAdmDifferentiationThr : 949
+lbAtoThresholdLevel1 : 55
+lbAtoThresholdLevel2 : 55
+ulAdmDifferentiationThr : 949
+diffAdmCtrlFilteringEnabled : true
+
+""")
+
+        else:
+            script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4011557"
+featureState : DEACTIVATED
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4011814"
+featureState : DEACTIVATED
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012258"
+featureState : DEACTIVATED
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBCUCPFunction=1,AdmissionControl=1"
+lbAtoThresholdLevel1 : 30
+lbAtoThresholdLevel2 : 45
+ulAdmDifferentiationThr : 900
+diffAdmCtrlFilteringEnabled : false
+
+create
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,SubscriberGroupProfile=1"
+cellTriggerList : {{B14 CID}}
+
+
+""")
+
+        if not b29_df.empty:
+            script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4011567"
+featureState : ACTIVATED
+
+""")
+        else:
+            script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4011567"
+featureState : DEACTIVATED
+
+""")
+
+        if not is_sa:
+            script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012713"
+featureState : DEACTIVATED
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012736"
+featureState : DEACTIVATED
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012591"
+featureState : DEACTIVATED
+
+
+""")
+        else:
+            script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012713"
+featureState : ACTIVATED
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012591"
+featureState : ACTIVATED
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012736"
+featureState : ACTIVATED
+
+
+""")
+        if ((not is_sa) or (is_sa and (has_n77 or dss))):
+            script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012775"
+featureState : DEACTIVATED
+
+""")
+        if has_hb:
+            script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012659"
+featureState : DEACTIVATED
+
+""")
+        else:
+            script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012659"
+featureState : ACTIVATED
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBCUCPFunction=1,UeGroupSelection=1,UeServiceGroupDefinition=AIA_B_Premium"
+selectionCriteria : "(rfsp==34||spid==34)&&(5qi==7||qci==7)"
+
+""")
+        if not has_hb and not hicap:
+            script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012547"
+featureState : ACTIVATED
+
+""")
+
+        else:
+            script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012547"
+featureState : DEACTIVATED
+
+""")
+
+        if lte_anchor_hb or not site_n77.empty or not has_nr:
+            script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012371"
+featureState : DEACTIVATED
+
+""")
+        elif lte_anchor:
+            script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012371"
+featureState : ACTIVATED
+
+""")
+
+        if not idas:
+            script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBDUFunction=1,UeCC=1,SchedulingProfile=TurboLive"
+schedulingAlgorithm : RESOURCE_FAIR
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext=xx5GSiteIdxx,ManagedElement=xx5GSiteIdxx,GNBDUFunction=1,UeCC=1,SchedulingProfile=TurboLive"
+relativePriority : 64
+
+""")
+        elif not has_hb and idas:
+            script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBDUFunction=1,UeCC=1,SchedulingProfile=TurboLive"
+schedulingAlgorithm : PRIORITIZED_RATE
+
+""")
+            
+        script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,PtmFunction=1"
+ptmEnabled : {"True" if b14 else "False"}
+
+""")
+
+        if is_sa and not site_non_n77.empty:
+            script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBCUCPFunction=1,UeGroupSelection=1,UeMobilityGroupDefinition=RedCap"
+selectionCriteria : "redCapUe==1"
+
+""")
+
+        script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBDUFunction=1,AdmissionControl=1,CallQueuing=1,CallQueuingProfile=Default"
+queueRrcRequestMode : {"PRIORITIZED_ONLY" if is_sa else "DISABLED"}
+
+
+""")
+        if is_sa:
+            script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012856"
+featureState : ACTIVATED
+
+""")
+
+        if not hicap:
+            script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4011255"
+featureState : ACTIVATED
+
+""")
+
+        if not lte_anchor_hb:
+            script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,CarrierAggregationFunction=1"
+dcSCellActDeactDataThres : 30
+dcSCellActDeactDataThresHyst : 30
+dcSCellDeactDelayTimer : 200
+
+""")
+        elif lte_anchor_hb or not has_nr:
+            script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,CarrierAggregationFunction=1"
+dcSCellActDeactDataThres : 100
+dcSCellActDeactDataThresHyst : 90
+dcSCellDeactDelayTimer : 50
+
+""")
+
+        if  lb_cells:
+            script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012704"
+featureState : ACTIVATED
+
+""")
+
+
+
+        script.append(f"""create
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBCUCPFunction=1,UeGroupSelection=1,UeServiceGroupDefinition=TurboLive"
+ueServiceGroupId : "8"
+ueServiceGroupPriority : 80
+selectionCriteria : "(spid==19&&qci==7)||(rfsp==19&&5qi==7)"
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBCUCPFunction=1,UeGroupSelection=1,UeServiceGroupDefinition=TurboLive"
+selectionCriteria : "(spid==19&&qci==7)||(rfsp==19&&5qi==7)"
+ueServiceGroupId : "8"
+ueServiceGroupPriority : 80
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012519"
+featureState : ACTIVATED
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012601"
+featureState : ACTIVATED
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,QciTable=default,QciProfileOperatorDefined=qci199"
+dataFwdPerQciEnabled : true
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012082"
+featureState : ACTIVATED
+
+create
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBCUCPFunction=1,UeGroupSelection=1,UeMobilityGroupDefinition=FN_SA"
+selectionCriteria : rfsp==1 || rfsp==2
+ueMobilityGroupDefinitionId : "FN_SA"
+ueMobilityGroupId : "16"
+ueMobilityGroupPriority : 160
+
+create
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBDUFunction=1,DUQosModifier=1,DUModified5qi=7,DUModified5qiUeCfg=TurboLive"
+dUModified5qiUeCfgId : "TurboLive"
+l4sCfgRef : <empty>
+logicalChannelRef : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBDUFunction=1,UeCC=1,LogicalChannel=Default"
+packetDelayBudget : <empty>
+prefUeGroupList : <empty>
+priorityLevel : 68
+srHandlingRef : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBDUFunction=1,UeCC=1,SrHandling=Default"
+ueConfGroupList : 8
+ueGroupList : <empty>
+userLabel : "TurboLive"
+ 
+ 
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext=FSNN010439,ManagedElement=FSNN010439,GNBDUFunction=1,DUQosModifier=1,DUModified5qi=7,DUModified5qiUeCfg=TurboLive"
+l4sCfgRef : <empty>
+logicalChannelRef : "SubNetwork=ONRM_ROOT_MO,MeContext=FSNN010439,ManagedElement=FSNN010439,GNBDUFunction=1,UeCC=1,LogicalChannel=Default"
+packetDelayBudget : <empty>
+prefUeGroupList : <empty>
+priorityLevel : 68
+srHandlingRef : "SubNetwork=ONRM_ROOT_MO,MeContext=FSNN010439,ManagedElement=FSNN010439,GNBDUFunction=1,UeCC=1,SrHandling=Default"
+ueConfGroupList : 8
+ueGroupList : <empty>
+userLabel : "TurboLive"
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4011958"
+featureState : DEACTIVATED
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012383"
+featureState : ACTIVATED
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012606"
+featureState : ACTIVATED
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012477"
+featureState : ACTIVATED
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4011809"
+featureState : DEACTIVATED
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4011981"
+featureState : ACTIVATED
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012475"
+featureState : ACTIVATED
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012595"
+featureState : DEACTIVATED
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Fm=1,FmAlarmModel=1,FmAlarmType=WiFiServiceActivated"
+configuredSeverity : CRITICAL
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBCUCPFunction=1,UeGroupSelection=1,UeServiceGroupDefinition=TurboLive"
+selectionCriteria : (spid==19&&qci==7)||(rfsp==19&&5qi==7)
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBDUFunction=1,AdmissionControl=1"
+admissionPrioThreshold : 1
+rrcHighPriorityAccessPrio : 12
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext=xx5GSiteIdxx,ManagedElement=xx5GSiteIdxx,GNBCUCPFunction=1,UeCC=1,UlDataSplit=Default_endc,UlDataSplitUeCfg=Base"
+initialUlPrimaryPathMode : SCG
+
+
+""")
+        
+        if is_catm_node:
+            script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,Paging=1"
+pagingAssistDataSupportBr : ASSISTANCE_DATA_CELL_ID
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012302"
+featureState : ACTIVATED
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012320"
+featureState : ACTIVATED
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012323"
+featureState : ACTIVATED
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012359"
+featureState : ACTIVATED
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012425"
+featureState : ACTIVATED
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012539"
+featureState : ACTIVATED
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012545"
+featureState : ACTIVATED
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012572"
+featureState : ACTIVATED
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012608"
+featureState : ACTIVATED
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,Rcs=1"
+raiReleaseDelayTimerBr : 5
+
+""")
+            
+
+        if is_3radio:
+            script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012816"
+featureState : ACTIVATED
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012817"
+featureState : ACTIVATED
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBDUFunction=1,UeCC=1,UplinkComp=1,UplinkCompUeCfg=Base"
+uplinkCompUeEnabled : True
+
+
+""")
+
+        if has_lte:
+            script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},NodeSupport=1,LicenseSupport=1,NetworkLicensing=1"
+euft : <empty>
+
+""")
+
+        if is_sa and not has_hb:
+            script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012865"
+featureState : ACTIVATED
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012872"
+featureState : ACTIVATED
+
+""")
+
+
+        if is_4890radio:
+            script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4011254"
+featureState : ACTIVATED
+
+""")
+
+        if not isdas and not iscran:
+            script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4011808"
+featureState : ACTIVATED
+
+""")
+
+        if not b30_df.empty:
+            script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4010955"
+featureState : DEACTIVATED
+
+""")
+
+        if not multiple_nr_bands:
+            script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBCUCPFunction=1,TrafficSteering=1,TrStPSCellProfile=Default,TrStPSCellProfileUeCfg=Base"
+hiPrioDetMeasurementTime : 5000
+hiPrioDetStartTime : 2000
+rsrpCandidateA5 : {{threshold2=-156}}
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBCUCPFunction=1,UeMC=1,UeMCNrFreqRelProfile=Default,UeMCNrFreqRelProfileUeCfg=Base"
+
+""")
+
+
+
+
+
+# LTE cell loop
+        
+
+
+        for _,r in site_lte_df.iterrows():
+            cell = r.get("EutranCellFDDId")
+            band = r.get("eUTRA operating band")
+            bw = r.get("dlChannelBandwidth")
+            p_bw = parse_bw(bw)
+
+            pcell_band = cell_band.get(cell)
+            allowed_scells = pcell_scell_map.get(pcell_band, [])
+
+            site_bands = set(cell_band.values())
+
+# Count only unique allowed SCell bands
+            scell_count = len(site_bands.intersection(allowed_scells))
+            # print(cell,scell_count,site_bands)
+
+            script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell},UeMeasControl=1,ReportConfigA5InterFreqHigherPrio=1"
+timeToTriggerA5 : 320
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell},UeMeasControl=1,ReportConfigA5UlTrig=1"
+a5Threshold2Rsrp : -120
+
+
+""")
+
+
+            if (has_nr and has_lte) and ("ARL" not in cell or "OKL" not in cell):
+                script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell}"
+endcSetupUlBsVolThr : 10000
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell}"
+endcSetupDlBsVolThr : 50
+
+""")
+            if not has_nr:
+                script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell}"
+endcSetupUlBsVolThr : 0
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell}"
+loopingEndcProtectionEnabled : False
+restartBufMonAtMobility : False
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell}"
+endcSetupDlBsVolThr : 50
+
+
+""")
+
+            if cell in catm_cells:
+                script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell}"
+catm1SupportEnabled : true
+eDrxAllowed : true
+eDrxUeType : LTE_CATM
+highestSupportedCeLevelBr : 1
+measGapShareSchemeCeABr : SCHEME_ONE
+prachFreqSharing : true
+dataInactTimerBr : {{dataInactTimerBrCe0=10,dataInactTimerBrCe1=20}}
+mappingInfoCe : {{mappingInfoSIB3=MAPPED_SI_5,mappingInfoSIB4=MAPPED_SI_5}}
+drxActiveBr : CE_LEVEL_0_AND_1
+ 
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell},UeMeasControl=1"
+ueMeasurementsActiveBr : true
+
+""")
+            else:
+                script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell}"
+catm1SupportEnabled : false
+eDrxAllowed : false
+eDrxUeType : LTE
+highestSupportedCeLevelBr : 0
+measGapShareSchemeCeABr : SCHEME_ZERO
+prachFreqSharing : false
+dataInactTimerBr : {{dataInactTimerBrCe0=0,dataInactTimerBrCe1=0}}
+mappingInfoCe : {{mappingInfoSIB3=NOT_MAPPED,mappingInfoSIB4=NOT_MAPPED}}
+drxActiveBr : CE_LEVEL_0
+
+
+""")
+            if (cell in mb_cells or (cell in b5_cells and b17)) and p_bw >=10000:
+                script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell},UeMeasControl=1,ReportConfigSearch=1"
+a2OuterSearchThrRsrpOffset : -6
+
+""")
+            elif cell in b30_cells:
+                script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell},UeMeasControl=1,ReportConfigSearch=1"
+a2OuterSearchThrRsrpOffset : -2
+
+""")
+            else:
+                script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell},UeMeasControl=1,ReportConfigSearch=1"
+a2OuterSearchThrRsrpOffset : 0
+
+""")
+            if scell_count > 1 and cell not in b29_cells:
+                script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell},UeMeasControl=1,ReportConfigSCellA1A2=1"
+a1a2ThresholdRsrq : -195
+hysteresisA1A2Rsrp : 40
+hysteresisA1A2Rsrq : 0
+timeToTriggerA2 : 1024
+triggerQuantityA1A2 : RSRQ
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell},UeMeasControl=1,ReportConfigSCellA6=1"
+timeToTriggerA6 : 1024
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell}"
+ulHeavyUeDetectEnabled : true
+
+""")
+            else:
+                script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell}"
+ulHeavyUeDetectEnabled : false
+
+""")
+            
+            if cell in lb_cells:
+                script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell},UeMeasControl=1,ReportConfigA5Spifho=1"
+a5Threshold2Rsrp : -115
+a5Threshold2Rsrq : -150
+timeToTriggerA5 : 640
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell},UeMeasControl=1,ReportConfigA1A2HigherPrio=1"
+thresholdRsrp : -104
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell},UeMeasControl=1,ReportConfigA5InterFreqHigherPrio=1"
+a5Threshold2Rsrp : -115
+a5Threshold2Rsrq : -150
+
+
+""")
+            elif cell in b14_cells:
+                script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell},UeMeasControl=1,ReportConfigA5Spifho=1"
+a5Threshold2Rsrp : -116
+a5Threshold2Rsrq : -160
+timeToTriggerA5 : 40
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell},UeMeasControl=1,ReportConfigA1A2HigherPrio=1"
+thresholdRsrp : -126
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell},UeMeasControl=1,ReportConfigA5InterFreqHigherPrio=1"
+a5Threshold2Rsrp : -140
+a5Threshold2Rsrq : -195
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell},UeMeasControl=1,ReportConfigEUtraIFBestCell=1"
+a3RsrqOffset : -60
+
+
+""")
+            else:
+                script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell},UeMeasControl=1,ReportConfigA5Spifho=1"
+a5Threshold2Rsrp : -110
+a5Threshold2Rsrq : -150
+timeToTriggerA5 : 80
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell},UeMeasControl=1,ReportConfigA1A2HigherPrio=1"
+thresholdRsrp : -126
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell},UeMeasControl=1,ReportConfigA5InterFreqHigherPrio=1"
+a5Threshold2Rsrp : -140
+a5Threshold2Rsrq : -195
+
+""")
+
+            if cell in lb_cells or (cell in b5_cells and not b17) or (cell in mb_cells and p_bw <10000):
+                script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell},UeMeasControl=1,ReportConfigSearch=1"
+a1a2SearchThresholdRsrq : -170
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell},UeMeasControl=1,ReportConfigEUtraIFBestCell=1"
+a3RsrqOffset : -10
+
+
+""")
+            elif (cell in mb_cells or (cell in b5_cells and b17) and p_bw >=10000) or cell in b30_cells:
+                script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell},UeMeasControl=1,ReportConfigSearch=1"
+a1a2SearchThresholdRsrq : -185
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD=xxEutranCellFDDIdxx,UeMeasControl=1,ReportConfigEUtraIFBestCell=1"
+a3RsrqOffset : -30
+
+""")
+            else:
+                script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell},UeMeasControl=1,ReportConfigSearch=1"
+a1a2SearchThresholdRsrq : -150
+
+""")
+
+            if cell in b29_cells:
+                script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell},UeMeasControl=1,ReportConfigA5EndcHo=1"
+reportAmountA5 : 0
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell},UeMeasControl=1"
+bothInterA3RsrpRsrqCheck : false
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell}"
+primaryUpperLayerInd : OFF
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell}"
+pZeroNominalPucchBr : -116
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell}"
+pZeroNominalPuschBr : -80
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell}"
+servOrPrioIFHoSetupBearer : false
+spifhoDedicatedReportConfig : False
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell},UeMeasControl=1,ReportConfigEUtraIFBestCell=1"
+a3RsrqOffset : 0
+
+""")
+            else:
+                script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell},UeMeasControl=1"
+bothInterA3RsrpRsrqCheck : True
+
+""")
+
+
+            if cell in lb_cells and cell in b14_cells and cell in b29_cells:
+                script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell}"
+systemInformationBlock3 : {{sNonIntraSearchQ=0,threshServingLowQ=1000}}
+
+""")
+
+            elif (cell in mb_cells or (cell in b5_cells and b17) and p_bw >=10000) or cell in b30_cells:
+                script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell}"
+systemInformationBlock3 : {{sNonIntraSearchQ=12,threshServingLowQ=12}}
+
+""")
+
+            elif cell in mb_cells and p_bw <10000:
+                script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell}"
+systemInformationBlock3 : {{sNonIntraSearchQ=17,threshServingLowQ=17}}
+
+
+""")
+
+                
+
+
+
+
+
+
+
+
+
+
+
+
+            if cell in mb_cells and p_bw <10000:
+                script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell},UeMeasControl=1,ReportConfigSearch=1"
+a2OuterSearchThrRsrqOffset : -20
+
+""")
+
+            elif cell in b17_cells or cell in b14_cells or cell in b29_cells:
+                script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell},UeMeasControl=1,ReportConfigSearch=1"
+a2OuterSearchThrRsrqOffset : 0
+
+""")
+            else:
+                script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell},UeMeasControl=1,ReportConfigSearch=1"
+a2OuterSearchThrRsrqOffset : -10
+
+""")
+
+            if cell in mb_cells and p_bw <10000:
+                script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell},UeMeasControl=1,ReportConfigEUtraIFBestCell=1"
+a3RsrqOffset : -10
+
+""")
+            
+
+            if cell in b30_cells:
+                if "10000/6400" in bw:
+                    script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell}"
+ailgRef : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,AirIfLoadProfile=WCS_Slim"
+dlCchAndRefSigBlockActive : True
+dlCchAndRefSigBoost : True
+dlConfigurableFrequencyStart : 37
+dlFrequencyAllocationProportion : 64
+dlInterferenceManagementActive : False
+
+""")
+                else:
+                    script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell}"
+ailgRef : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,AirIfLoadProfile=4"
+dlCchAndRefSigBlockActive : false
+dlCchAndRefSigBoost : false
+dlConfigurableFrequencyStart : 0
+dlFrequencyAllocationProportion : 100
+dlInterferenceManagementActive : true
+
+""")
+
+            script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell}"
+interFreqHoHigherPrioEndc : {"True" if cell in lb_cells else "False"}
+interFreqHoHigherPrioSnRel : {"True" if cell in lb_cells else "False"}
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell},UeMeasControl=1,ReportConfigB1GUtra=1"
+reportIntervalB1 : {"MS_480" if lte_anchor else "MS_120"}
+
+
+""")
+
+            if cell in b17_cells or cell in b29_cells:
+                script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell},UeMeasControl=1,ReportConfigSearch=1"
+inhibitA2SearchConfig : INHIBIT_A2SEARCH_RSRP
+
+""")
+            elif cell in b14_cells:
+                script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell},UeMeasControl=1,ReportConfigSearch=1"
+inhibitA2SearchConfig : INHIBIT_A2SEARCH_RSRQ
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell}"
+servOrPrioTriggeredIFHo : ARP
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell},UeMeasControl=1,ReportConfigSearch=1"
+a1a2SearchThresholdRsrp : -85
+
+""")
+
+            else:
+                script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell},UeMeasControl=1,ReportConfigSearch=1"
+inhibitA2SearchConfig : NOT_INHIBIT
+
+""")
+
+            if cell in b14_cells:
+                script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell},UeMeasControl=1,ReportConfigSearch=1"
+a1a2SearchThresholdRsrp : -85
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell},UeMeasControl=1,ReportConfigA5=1"
+a5Threshold1Rsrp : -116
+a5Threshold2Rsrp : -112
+
+
+""")
+            elif cell in b30_cells:
+                script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell},UeMeasControl=1,ReportConfigSearch=1"
+a1a2SearchThresholdRsrp : -124
+
+""")
+            else:
+                script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell},UeMeasControl=1,ReportConfigSearch=1"
+a1a2SearchThresholdRsrp : -118
+
+""")
+
+            if cell in sleep_cells:
+                script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell},CellSleepFunction=1"
+sleepStartTime : "02:00"
+
+""")
+
+            if cell in b14_cells or cell in b17_cells:
+                value = "ON" if cell in primary_upper_on_cells else "OFF"
+                script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell}"
+primaryUpperLayerInd : {value}
+
+""")
+                
+            if isdas or hicap:
+                script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell}"
+interFreqHoHigherPrioEnabled : False
+
+""")
+
+            elif cell in lb_cells and mb_usid:
+                script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell}"
+interFreqHoHigherPrioEnabled : True
+
+""")
+
+            else:
+                script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell}"
+interFreqHoHigherPrioEnabled : False
+
+""")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# 5G cell loop
+
+
+
+        for _,r in site_fg_df.iterrows():
+            cell = r.get("NRCellDU")
+            rru_type = str(r.get("RRU Type"))
+            sa_type = str(r.get("NSA/SA")).strip().upper()
+            bw = r.get("bSChannelBwDL")
+            if cell in site_n77["NRCellDU"].values:
+                script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBCUCPFunction=1,Mcpc=1,McpcPSCellProfile={cell},McpcPSCellProfileUeCfg=Base"
+rsrpCritical : {{threshold=-125}}
+
+""")
+                if multiple_nr_bands:
+                    script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBCUCPFunction=1,NRCellCU={cell}"
+hiPrioDetEnabled : False
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBDUFunction=1,NRCellDU={cell}"
+pdcchSymbConfig : ADAPT_MAX_2
+
+""")
+
+                if is_3radio:
+                    script.append(f"""set 
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBDUFunction=1,NRCellDU={cell}"
+csiRsConfig32P : {{csiRsControl32Ports=EIGHT_TWO_N1AZ,i11Restriction="FFFFFFFF",i12Restriction="FF"}}
+dlMaxMuMimoLayers : 8
+maxNoOfAdvancedDlMuMimoLayers : 16
+ulMaxMuMimoLayers : 4
+advancedDlSuMimoEnabled : true
+
+set 
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBDUFunction=1,NRCellDU={cell}"
+pdcchCapacityBoostEnabled : true
+
+""")
+                
+
+
+                
+            if cell in site_non_n77["NRCellDU"].values:
+                script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBCUCPFunction=1,Mcpc=1,McpcPSCellProfile={cell},McpcPSCellProfileUeCfg=Base"
+rsrpCritical : {{threshold=-115}}
+
+""")
+
+
+            if hicap:
+                script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBDUFunction=1,NRCellDU={cell}"
+pdcchLaSinrOffset : -8
+
+""")
+            elif cell in site_n77["NRCellDU"].values:
+                script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBDUFunction=1,NRCellDU={cell}"
+pdcchLaSinrOffset : -15
+
+""")
+            if cell in site_non_n77["NRCellDU"].values:
+                script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBDUFunction=1,NRCellDU={cell}"
+pdcchLaSinrOffset : -10
+
+""")
+                
+            
+            script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBDUFunction=1,NRCellDU={cell}"
+pdschAllowedInDmrsSym : true
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBCUCPFunction=1,Mcpc=1,McpcPSCellProfile={cell},McpcPSCellProfileUeCfg=Base"
+lowHighFreqPrioClassification : 6
+
+
+""")
+
+            if cell in site_non_n77["NRCellDU"].values:
+                script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBDUFunction=1,NRCellDU={cell}"
+pMax : 23
+
+""")
+            if sa_type == "NSA" and cell in site_n77["NRCellDU"].values:
+                script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBDUFunction=1,NRCellDU={cell}"
+pMax : 26
+
+""")
+            if sa_type == "SA" and re.search(r"4435", rru_type, re.IGNORECASE):
+                script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBDUFunction=1,NRCellDU={cell}"
+pMax : 26
+
+
+""")
+            if sa_type == "SA" and cell in site_n77["NRCellDU"].values and not re.search(r"4435", rru_type, re.IGNORECASE):
+                script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBDUFunction=1,NRCellDU={cell}"
+pMax : 1000
+
+""")
+            
+            if cell in site_non_n77["NRCellDU"].values:
+                script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBCUCPFunction=1,NRCellCU={cell}"
+sNonIntraSearchQ : {"1" if sa_type == "SA" else "2"}
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBCUCPFunction=1,Mcpc=1,McpcPCellProfile={cell},McpcPCellProfileUeCfg=Base"
+rsrpCritical : {{threshold=-115}}
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBCUCPFunction=1,Mcpc=1,McpcPSCellProfile={cell},McpcPSCellProfileUeCfg=Base"
+rsrpSearchZone : {{threshold=-113}}
+
+
+""")
+                if sa_type == "SA":
+                    script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBCUCPFunction=1,TrafficSteering=1,TrStSaCellProfile={cell},TrStSaCellProfileUeCfg=RedCap"
+criterionBetterUeConfig : 10
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBCUCPFunction=1,TrafficSteering=1,TrStSaCellProfile={cell},TrStSaCellProfileUeCfg=FN_SA"
+bwTrigISHoTriggerQuantity : RSRP
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBCUCPFunction=1,TrafficSteering=1,TrStSaCellProfile={cell},TrStSaCellProfileUeCfg=FN_SA"
+criterionDlAbsoluteOffset : 5
+dataAwareMobDlPktAgeThr : 0
+dataAwareMobDlPktVolThr : 0
+mlcTriggerQuantity : RSRP
+rsrpPCellCandidate : {{hysteresis=10,threshold2=-104,timeToTrigger=640}}
+rsrpPCellCandidateAddTargEval : NONE
+rsrpPCellCandidateB2 : {{hysteresis=10,threshold1=-29,timeToTrigger=640}}
+rsrpPCellCandidateB2AddTargEval : NONE
+rsrpPCellCandidateB2PcOffset : {{powerClass=2,threshold1Offset=0}}
+rsrpPCellCandidatePcOffset : {{powerClass=2,threshold2Offset=0}}
+rsrpSCellCandidate : {{hysteresis=10,threshold2=-156,timeToTrigger=640}}
+rsrqPCellCandidate : {{hysteresis=10,threshold2=-435,timeToTrigger=640}}
+rsrqPCellCandidateAddTargEval : NONE
+rsrqPCellCandidateB2 : {{hysteresis=10,threshold1=-435,threshold2EUtra=-195,timeToTrigger=640}}
+rsrqPCellCandidateB2AddTargEval : NONE
+rsrqSCellCandidate : {{hysteresis=10,threshold2=-435,timeToTrigger=640}}
+sinrPCellCandidate : {{hysteresis=10,threshold2=-230,timeToTrigger=640}}
+sinrPCellCandidateAddTargEval : NONE
+sinrPCellCandidateB2 : {{hysteresis=10,threshold1=-230,threshold2EUtra=-230,timeToTrigger=640}}
+sinrPCellCandidateB2AddTargEval : NONE
+sinrSCellCandidate : {{hysteresis=10,threshold2=-230,timeToTrigger=640}}
+t320 : 180
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBCUCPFunction=1,TrafficSteering=1,TrStSaCellProfile={cell},TrStSaCellProfileUeCfg=FN_SA"
+aggregatedBwThreshold : 25
+bwTrigISHoEnabled : True
+criterionBetterUeConfig : 10
+dataAwareMobLowDlThpThr : 10000
+dataAwareMobLowUlThpThr : 3000
+rsrpPCellCandidateB2 : {{threshold2EUtra=-116}}
+
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBCUCPFunction=1,TrafficSteering=1,TrStSaCellProfile={cell},TrStSaCellProfileUeCfg=FN_SA"
+mlcAllowedCellSetChangeAction : {"HO_AND_SCELL_RESELECTION" if n77 else "HANDOVER"}
+mlcEnabled : {"True" if n77 else "False"}
+mlcPeriodicEnabled : {"True" if n77 else "False"}
+mlcPeriodicInterval : {"30" if n77 else "15"}
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBCUCPFunction=1,Mcfb=1,McfbCellProfile={cell},McfbCellProfileUeCfg=Base"
+rsrpCellCandidate : {{threshold=-129}}
+
+""")
+                else:
+                    script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBCUCPFunction=1,Mcfb=1,McfbCellProfile={cell},McfbCellProfileUeCfg=Base"
+rsrpCellCandidate : {{threshold=-140}}
+
+""")
+
+
+            if cell in site_n77["NRCellDU"].values:
+                if sa_type == "SA":
+                    script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBCUCPFunction=1,TrafficSteering=1,TrStSaCellProfile={cell},TrStSaCellProfileUeCfg=FN_SA"
+aggregatedBwThreshold : 10
+bwTrigISHoEnabled : False
+criterionBetterUeConfig : 100
+dataAwareMobLowDlThpThr : 0
+dataAwareMobLowUlThpThr : 0
+mlcAllowedCellSetChangeAction : HANDOVER
+mlcPeriodicEnabled : False
+mlcPeriodicInterval : 15
+rsrpPCellCandidateB2 : {{threshold2EUtra=-140}}
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBCUCPFunction=1,TrafficSteering=1,TrStSaCellProfile={cell},TrStSaCellProfileUeCfg=FN_SA"
+mlcEnabled : {"True" if bw<= 30 else "False"}
+
+""")
+
+
+
+        return script
+
+
+
+###   # -----------------------------end-------------------------------------
+
+
+
+        # ------------------------------------------------------------------------------------------------
+        # MAIN LOOP
+        # ------------------------------------------------------------------------------------------------
+
+    isdas = "DAS" in str(enb_df["Structure Type"].iloc[0]).upper()
+    
+    for _, row in mixed_df.iterrows():
+
+        siteid = row.get("Node to be built as")
+
+        fn_sa = (node_bands.get(str(siteid), {}).get("FN_SA", False))
+        eNBId = row.get("eNBId")
+        gNBId = row.get("gNBId")
+
+        G2_suffixes = ("5216", "6630")
+        G3_suffixes = ("6651", "6648", "6339", "6337", "6507")
+        g2_pattern = "|".join(G2_suffixes)
+        g3_pattern = "|".join(G3_suffixes)
+
+        site_enb_df = enb_df[enb_df["eNBId"] == eNBId]
+        site_gnb_df = gnb_df[gnb_df["gNBId"] == gNBId]
+
+
+        is_lte_g2 = (site_enb_df["DU type"].astype(str).str.contains(g2_pattern, na=False).any())
+        is_lte_g3 = (site_enb_df["DU type"].astype(str).str.contains(g3_pattern, na=False).any())
+
+        is_fg_g2 = (site_gnb_df["DU type"].astype(str).str.contains(g2_pattern, na=False).any())
+        is_fg_g3 = (site_gnb_df["DU type"].astype(str).str.contains(g3_pattern, na=False).any())
+
+
+        
+        if pd.isna(siteid):
+            continue
+
+        site_output_lines = []
+
+        # --------------------------------
+        # VALIDATE IDs
+        # --------------------------------
+        eNB_valid = (
+        pd.notna(eNBId)
+        and str(eNBId).strip() != ""
+        and str(eNBId).strip().lower() != "nan"
+        )
+
+        gNB_valid = (
+        pd.notna(gNBId)
+        and str(gNBId).strip() != ""
+        and str(gNBId).strip().lower() != "nan"
+        )
+
+        # --------------------------------
+        # FILTER DATA
+        # --------------------------------
+        if eNB_valid:
+            site_lte_df = lte_df[lte_df["eNBId"] == eNBId]
+        else:
+            site_lte_df = lte_df.iloc[0:0]
+
+        if gNB_valid:
+            site_fg_df = fiveg_df[fiveg_df["gNBId"] == gNBId]
+            site_sa_df = sa_df[sa_df["gNBId"] == gNBId]
+        else:
+            site_fg_df = fiveg_df.iloc[0:0]
+            site_sa_df = sa_df.iloc[0:0]
+
+
+        # ------------------------------------------------------------------------------------------------
+        # Suffix related PRESENCE
+        # ------------------------------------------------------------------------------------------------
+
+
+        # --------------------------------
+        # n77 PRESENCE
+        # --------------------------------
+        
+
+
+
+        site_n77 = site_fg_df[site_fg_df["NRCellDU"].astype(str).str.contains("N077", case=False, na=False)]
+        site_n260 = site_fg_df[site_fg_df["NRCellDU"].astype(str).str.contains("N260", case=False, na=False)]
+        site_non_n77 = site_fg_df[~site_fg_df["NRCellDU"].astype(str).str.contains("N077|N260", case=False, na=False)]
+        has_n77 = not site_n77.empty
+        has_non_n77 = not site_non_n77.empty
+        has_hb = not site_n260.empty
+
+
+        # --------------------------------
+        # Bandwidth Classification
+        # --------------------------------
+        if (not site_non_n77.empty and "bSChannelBwDL" in site_non_n77.columns):
+            
+            bw_numeric = pd.to_numeric(site_non_n77["bSChannelBwDL"], errors="coerce")
+            bw_below_10Mhz = site_non_n77[bw_numeric < 10]
+            bw_10Mhz_or_above = site_non_n77[bw_numeric >= 10]
+        else:
+            bw_below_10Mhz = site_non_n77.iloc[0:0]
+            bw_10Mhz_or_above = site_non_n77.iloc[0:0]
+
+
+
+        no_n77 = len(site_n77)
+        has_bw_below_10Mhz = not bw_below_10Mhz.empty
+        has_bw_10Mhz_or_above = not bw_10Mhz_or_above.empty
+
+
+
+        # --------------------------------
+        # ACTUAL NODE PRESENCE
+        # --------------------------------
+        has_lte = not site_lte_df.empty
+
+        has_nr = not site_fg_df.empty
+
+        # --------------------------------
+        # SA PRESENCE
+        # --------------------------------
+
+        is_sa = not site_sa_df.empty
+
+        # --------------------------------
+        # Vonr PRESENCE
+        # --------------------------------
+
+        if gNB_valid and "VoNR" in site_fg_df.columns:
+            is_vonr = (site_fg_df["VoNR"].astype(str).str.strip().str.upper().eq("YES").any())
+        else:
+            is_vonr = False
+
+        # --------------------------------
+        # DSS cells
+        # --------------------------------
+
+        dss_lte_cells = set(dss_clean[~dss_clean.isin(["NO", "NA", "N/A"])])
+        dss_fg_cells = set(dss_clean[~dss_clean.isin(["NO", "NA", "N/A"])].index)
+
+        non_dss_fg_cells = set(dss_clean[dss_clean.isin(["NO", "NA", "N/A"])].index)
+
+        # --------------------------------
+        # cells
+        # --------------------------------
+
+        n77 = fiveg_df["NRCellDU"].astype(str).str.contains("N077", case=False, na=False).any()
+        b17 = lte_df["eUTRA operating band"].astype(str).str.contains(r"Band\s*17\b", case=False, na=False).any()
+        b14 = lte_df["eUTRA operating band"].astype(str).str.contains(r"Band\s*14\b", case=False, na=False).any()
+        mb_usid = lte_df["eUTRA operating band"].astype(str).str.contains(r"Band\s*(?:2|4|66)\b", case=False, na=False).any()
+
+
+        iscran = lte_df["EutranCellFDDId"].astype(str).str.contains(r"_R0", case=False, na=False).any()
+
+
+
+
+        b2_df = site_lte_df[site_lte_df["eUTRA operating band"].astype(str).str.contains(r"Band\s*2\b", case=False, na=False)]
+        b4_df = site_lte_df[site_lte_df["eUTRA operating band"].astype(str).str.contains(r"Band\s*4\b", case=False, na=False)]
+        b66_df = site_lte_df[site_lte_df["eUTRA operating band"].astype(str).str.contains(r"Band\s*66\b", case=False, na=False)]
+
+
+
+        b5_df = site_lte_df[site_lte_df["eUTRA operating band"].astype(str).str.contains(r"Band\s*5\b",case=False,na=False)]
+        b17_df = site_lte_df[site_lte_df["eUTRA operating band"].astype(str).str.contains(r"Band\s*17\b",case=False,na=False)]
+        b14_df = site_lte_df[site_lte_df["eUTRA operating band"].astype(str).str.contains(r"Band\s*14\b",case=False,na=False)]
+        b29_df = site_lte_df[site_lte_df["eUTRA operating band"].astype(str).str.contains(r"Band\s*29\b",case=False,na=False)]
+        b30_df = site_lte_df[site_lte_df["eUTRA operating band"].astype(str).str.contains(r"Band\s*30\b",case=False,na=False)]
+
+        mb_df = pd.concat([b2_df, b4_df, b66_df], ignore_index=True)
+
+        # Band 5 cells separated into 5 MHz and non-5 MHz
+
+        b5_5mhz_df = b5_df[b5_df["dlChannelBandwidth"].apply(parse_bw) == 5]
+        b5_non5mhz_df = b5_df[b5_df["dlChannelBandwidth"].apply(parse_bw) != 5]
+        
+        # Low-band cells = Band 17 + Band 5 (5 MHz only)
+        lb_cells = (b17_df["EutranCellFDDId"].tolist()+ b5_5mhz_df["EutranCellFDDId"].tolist())
+        # Mid-band cells = B2 + B4 + B66 + B5 (>5 MHz)
+        mb5_cells = (mb_df["EutranCellFDDId"].tolist()+ b5_non5mhz_df["EutranCellFDDId"].tolist())
+
+        mb_cells = mb_df["EutranCellFDDId"].tolist()
+        b17_cells = b17_df["EutranCellFDDId"].tolist()
+        b5_cells = b5_df["EutranCellFDDId"].tolist()
+        b66_cells = b66_df["EutranCellFDDId"].tolist()
+        b14_cells = b14_df["EutranCellFDDId"].tolist()
+        b29_cells = b29_df["EutranCellFDDId"].tolist()
+        b30_cells = b30_df["EutranCellFDDId"].tolist()
+
+        #-------------------------------------------------------------------
+        #           Catm Cells
+        #-------------------------------------------------------------------
+
+        catm_cells = []
+
+        if not b17_df.empty:
+            # Highest priority -> All Band17 cells
+            catm_cells = b17_df["EutranCellFDDId"].tolist()
+
+        else:
+
+            best_b2 = pd.DataFrame()
+            best_b4 = pd.DataFrame()
+
+            # Highest BW Band2 carrier
+            if not b2_df.empty:
+                b2_df = b2_df.copy()
+                b2_df["BW"] = b2_df["dlChannelBandwidth"].apply(parse_bw)
+
+                max_bw = b2_df["BW"].max()
+
+                best_b2 = b2_df[b2_df["BW"] == max_bw]
+
+            # Highest BW Band4 carrier
+            if not b4_df.empty:
+                b4_df = b4_df.copy()
+                b4_df["BW"] = b4_df["dlChannelBandwidth"].apply(parse_bw)
+
+                max_bw = b4_df["BW"].max()
+
+                best_b4 = b4_df[b4_df["BW"] == max_bw]
+
+            b2_bw = best_b2["BW"].iloc[0] if not best_b2.empty else -1
+            b4_bw = best_b4["BW"].iloc[0] if not best_b4.empty else -1
+
+            # Band2 wins ties
+            if b2_bw >= b4_bw:
+                catm_cells = best_b2["EutranCellFDDId"].tolist()
+            else:
+                catm_cells = best_b4["EutranCellFDDId"].tolist()
+
+        is_catm_node = bool(catm_cells)
+
+
+        #-------------------------------------------------------------------
+        #           Sleep Cells
+        #-------------------------------------------------------------------
+
+        lowest_b2_df = pd.DataFrame()
+        lowest_b4_df = pd.DataFrame()
+
+        # Lowest Band 2 carrier
+        if not b2_df.empty:
+            tmp = b2_df.copy()
+            tmp["EARFCN"] = pd.to_numeric(tmp["earfcnDl"], errors="coerce")
+
+            lowest_b2_earfcn = tmp["EARFCN"].min()
+            lowest_b2_df = tmp[tmp["EARFCN"] == lowest_b2_earfcn]
+
+        # Lowest Band 4 carrier
+        if not b4_df.empty:
+            tmp = b4_df.copy()
+            tmp["EARFCN"] = pd.to_numeric(tmp["earfcnDl"], errors="coerce")
+
+            lowest_b4_earfcn = tmp["EARFCN"].min()
+            lowest_b4_df = tmp[tmp["EARFCN"] == lowest_b4_earfcn]
+
+
+        sleep_cells = []
+
+        # B29
+        sleep_cells.extend(b29_df["EutranCellFDDId"].tolist())
+
+        # B30
+        sleep_cells.extend(b30_df["EutranCellFDDId"].tolist())
+
+        # B66
+        sleep_cells.extend(b66_df["EutranCellFDDId"].tolist())
+
+        # Band5 (5 MHz only)
+        sleep_cells.extend(b5_5mhz_df["EutranCellFDDId"].tolist())
+
+        # Compare lowest carriers between B2 and B4
+        if not lowest_b2_df.empty and not lowest_b4_df.empty:
+
+            if lowest_b2_df["EARFCN"].iloc[0] <= lowest_b4_df["EARFCN"].iloc[0]:
+                sleep_cells.extend(lowest_b2_df["EutranCellFDDId"].tolist())
+            else:
+                sleep_cells.extend(lowest_b4_df["EutranCellFDDId"].tolist())
+
+        elif not lowest_b2_df.empty:
+            sleep_cells.extend(lowest_b2_df["EutranCellFDDId"].tolist())
+
+        elif not lowest_b4_df.empty:
+            sleep_cells.extend(lowest_b4_df["EutranCellFDDId"].tolist())
+
+        # Remove duplicates
+        sleep_cells = list(dict.fromkeys(sleep_cells))
+
+        ###############################################################################
+        # primaryUpperLayerInd
+        ###############################################################################
+
+        bands = (
+            site_fg_df["Operating Band"]
+            .astype(str)
+            .str.strip()
+            .str.upper()
+        )
+
+        has_5g = not site_fg_df.empty
+        only_nr_lb = has_5g and bands.eq("850").all()
+        multiple_nr_bands = bands.nunique() > 2
+        primary_upper_on_cells = set()
+
+        # Case 1: No 5G present
+        # -> OFF (do nothing)
+
+        if not has_5g:
+            pass
+
+        # Case 2: Site has any non-NR_LB band
+        # -> All B14/B17 ON
+        elif not only_nr_lb:
+            primary_upper_on_cells.update(b14_cells)
+            primary_upper_on_cells.update(b17_cells)
+
+        # Case 3: Site has only NR_LB
+        # -> Check Nokia_Relations(LTE-NR)
+        else:
+
+            for cell in b14_cells + b17_cells:
+
+                relations = (
+                    la_n.loc[
+                        la_n["Ericsson FDD/TDD"] == cell,
+                        "GutranFreqRelationID"
+                    ]
+                    .astype(str)
+                    .str.strip()
+                )
+
+                if any(not rel.startswith("17") for rel in relations):
+                    primary_upper_on_cells.add(cell)
+
+
+
+        
+        #-------------------------------------------------------------------
+        #           PS Cells
+        #-------------------------------------------------------------------
+
+
+
+        pcell_scell_map = {
+    "B14": ["B2", "B4", "B66"],
+    "B17": ["B2", "B4", "B66"],
+    "B5":  ["B2", "B4", "B66", "B5", "B30"],
+    "B30": ["B2", "B4", "B5", "B14", "B17", "B29", "B66"],
+    "B4":  ["B2", "B4", "B5", "B14", "B17", "B29", "B30", "B66"],
+    "B66": ["B2", "B4", "B5", "B14", "B17", "B29", "B30", "B66"],
+    "B2":  ["B2", "B4", "B5", "B14", "B17", "B29", "B30", "B66"],
+}
+
+        cell_band = {}
+
+        for c in mb_df["EutranCellFDDId"]:
+            row = mb_df.loc[mb_df["EutranCellFDDId"] == c].iloc[0]
+            band = str(row["eUTRA operating band"]).upper()
+
+            if "66" in band:
+                cell_band[c] = "B66"
+            elif "4" in band:
+                cell_band[c] = "B4"
+            elif "2" in band:
+                cell_band[c] = "B2"
+
+        for c in b5_df["EutranCellFDDId"]:
+            cell_band[c] = "B5"
+
+        for c in b14_df["EutranCellFDDId"]:
+            cell_band[c] = "B14"
+
+        for c in b17_df["EutranCellFDDId"]:
+            cell_band[c] = "B17"
+
+        for c in b30_df["EutranCellFDDId"]:
+            cell_band[c] = "B30"
+
+        for c in b29_df["EutranCellFDDId"]:
+            cell_band[c] = "B29"
+
+        # --------------------------------
+        # Bandwidth Classification
+        # --------------------------------
+        if (not site_non_n77.empty and "bSChannelBwDL" in site_non_n77.columns):
+            
+            bw_numeric = pd.to_numeric(site_non_n77["bSChannelBwDL"], errors="coerce")
+            bw_5Mhz = site_non_n77[bw_numeric == 5]
+            bw_not_5Mhz = site_non_n77[bw_numeric > 5]
+        else:
+            bw_5Mhz = site_non_n77.iloc[0:0]
+            bw_not_5Mhz = site_non_n77.iloc[0:0]
+
+
+
+
+
+
+        # ------------------------------------------------------------------------------------------------
+        # CLASSIFY NODE TYPE
+        # ------------------------------------------------------------------------------------------------
+        if has_lte and has_n77 and has_non_n77:
+            resolved_type = "tmbb"
+
+        elif has_lte and (has_n77 or has_non_n77):
+            resolved_type = "mmbb"
+
+        elif has_nr:
+            resolved_type = "nr"
+
+        elif has_lte:
+            resolved_type = "lte"
+
+        else:
+            resolved_type = "unknown"
+
+        print(siteid, "->", resolved_type)
+
+
+        # ------------------------------------------------------------------------------------------------
+        # GENERATE SCRIPTS
+        # ------------------------------------------------------------------------------------------------
+        if resolved_type == "tmbb":
+            site_output_lines.extend(delta_script(siteid))
+
+        elif resolved_type == "mmbb":
+            site_output_lines.extend(delta_script(siteid))
+
+        elif resolved_type == "nr":
+            site_output_lines.extend(delta_script(siteid))
+
+        elif resolved_type == "lte":
+            site_output_lines.extend(delta_script(siteid))
+
+
+        # ------------------------------------------------------------------------------------------------
+        # STORE OUTPUT
+        # ------------------------------------------------------------------------------------------------
+
+        if site_output_lines:
+            all_site_outputs[siteid] = (f"{siteid}_NDS_Delta_script.txt","\n".join(site_output_lines))
+            
+    return all_site_outputs
+</script>
+
 <script>
 // ── ToolPortal SPA back navigation ─────────────────────────────────────────
 // When embedded in the ToolPortal shell (via <iframe>), tell the parent to
@@ -816,16 +2458,15 @@ function trinovaBackToPortal() {
   }
 }
 
-var sel={nds:false,fga:false,v3:false,v4:false,v5:false,v6:false,v7:false,v8:false,v9:false,v11:false};
-var consolidatedActive=false;
-var consolidatedParts=[];  // collects [label, content] for each version if consolidated
-
-function toggleConsolidated(){
-  consolidatedActive=!consolidatedActive;
-  var cb=document.getElementById('cb-consolidated');
-  cb.classList.toggle('selected',consolidatedActive);
-}
+var sel={fga:false,nds:false};
 var fgaGen='auto';
+var ndsOpts={hicap:false,dss:false,idas:false,fnsa:false};
+
+function toggleNdsOpt(e,key){
+  e.stopPropagation();
+  ndsOpts[key]=!ndsOpts[key];
+  document.getElementById('nds-'+key).classList.toggle('active',ndsOpts[key]);
+}
 
 var breadcrumbs={audit:'Audit Tool',generator:'Audit Tool / Delta Scripts',kgetall:'Audit Tool / KGetAll Comparison Tool',lockunlock:'Audit Tool / Lock & Unlock',manualcmd:'Audit Tool / Manual Cmd'};
 
@@ -1091,10 +2732,6 @@ async function pickFolder(){
 }
 
 async function addDl(content, filename, label){
-  // Collect into consolidated if active and this is an NDS version script (not FGA/cmedit)
-  if(consolidatedActive && filename.indexOf('_NDS_DELTA')>=0 && filename.indexOf('_FGA_')< 0){
-    consolidatedParts.push({label:label,content:content});
-  }
   var blob = new Blob([content], {type:'text/plain'});
   if(pickedFolderHandle){
     try {
@@ -1175,13 +2812,39 @@ function rebuild(blocks){
   return p.join('\n');
 }
 
+// Lazily load Pyodide (Python-in-browser) + pandas, then load the verbatim
+// NDS_con_1.py source (embedded above in #PY_NDS_CON) as a real Python module.
+// This guarantees NDS Delta output is byte-for-byte the same logic as the
+// original desktop tool, with zero manual JS re-implementation risk.
+var pyodideReadyPromise=null;
+function ensurePyodide(){
+  if(pyodideReadyPromise) return pyodideReadyPromise;
+  pyodideReadyPromise=(async function(){
+    if(!window.loadPyodide){
+      await new Promise(function(resolve,reject){
+        var s=document.createElement('script');
+        s.src='https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js';
+        s.onload=resolve;s.onerror=function(){reject(new Error('Failed to load Pyodide. Check your network settings.'));};
+        document.head.appendChild(s);
+      });
+    }
+    var pyodide=await loadPyodide();
+    await pyodide.loadPackage(['pandas','micropip']);
+    await pyodide.runPythonAsync('import micropip\nawait micropip.install("openpyxl")');
+    var pySrc=document.getElementById('PY_NDS_CON').textContent;
+    pyodide.FS.writeFile('/NDS_con.py', pySrc);
+    await pyodide.runPythonAsync('import sys\nif "/" not in sys.path: sys.path.insert(0, "/")\nfrom NDS_con import NDS_delta_generator');
+    return pyodide;
+  })();
+  return pyodideReadyPromise;
+}
+
 async function generate(){
   var btn=document.getElementById('genBtn'),sp=document.getElementById('spinner'),bt=document.getElementById('genBtnTxt');
   document.getElementById('dlSection').innerHTML='';
   if(!ciqInput.files[0]){alert('Please upload a CIQ Excel file');return;}
-  if(!sel.nds&&!sel.fga&&!sel.v3&&!sel.v4&&!sel.v5&&!sel.v6&&!sel.v7&&!sel.v8&&!sel.v9&&!sel.v11){alert('Please select at least one script');return;}
+  if(!sel.fga&&!sel.nds){alert('Please select at least one script');return;}
   btn.disabled=true;sp.style.display='block';bt.textContent='Processing...';
-  consolidatedParts=[];  // reset for this run (global var, shared with addDl())
   try {
     var ab=await ciqInput.files[0].arrayBuffer();
     var wb=XLSX.read(ab,{type:'array'});
@@ -1334,442 +2997,6 @@ async function generate(){
       if(secLTE[band])['ALPHA','BETA','GAMMA'].forEach(function(s){allLTECells=allLTECells.concat(allCells(band,s));});
     });
 
-    if(sel.nds){
-      // CellSleep
-      var sleepCells=[];
-      ['B29','B30','B66'].forEach(function(band){if(secLTE[band])['ALPHA','BETA','GAMMA'].forEach(function(s){var c=firstCell(band,s);if(c)sleepCells.push(c);});});
-      if(secLTE['B5'])['ALPHA','BETA','GAMMA'].forEach(function(s){allCells('B5',s).forEach(function(c){if(cellBwMap[c]===5000)sleepCells.push(c);});});
-      var b2=!!(secLTE['B2']),b4=!!(secLTE['B4']),winner=null;
-      if(b2&&b4){
-        var b2m=Math.min.apply(null,Object.values(earfcnMap['B2']||{}).reduce(function(a,v){return a.concat(v);},[]).map(function(x){return x.earfcn;}));
-        var b4m=Math.min.apply(null,Object.values(earfcnMap['B4']||{}).reduce(function(a,v){return a.concat(v);},[]).map(function(x){return x.earfcn;}));
-        winner=b2m<=b4m?'B2':'B4';
-      } else if(b2)winner='B2'; else if(b4)winner='B4';
-      if(winner){var all=Object.values(earfcnMap[winner]||{}).reduce(function(a,v){return a.concat(v);},[]);var minE=Math.min.apply(null,all.map(function(x){return x.earfcn;}));all.filter(function(x){return x.earfcn===minE;}).forEach(function(x){sleepCells.push(x.cellId);});}
-
-      var sa850Cells=[];['ALPHA','BETA','GAMMA'].forEach(function(s){((saSectors['850']||{})[s]||[]).forEach(function(c){sa850Cells.push(c);});});
-      var nsaMcfbCells=[];['850','n077'].forEach(function(band){['ALPHA','BETA','GAMMA'].forEach(function(s){((nsaSectors[band]||{})[s]||[]).forEach(function(c){nsaMcfbCells.push(c);});});});
-      var isSA=Object.keys(saSectors).length>0;
-      var onlyCBand=hasCBand&&!has850&&!hasMB;
-      var hasB30=!!(secLTE['B30']);
-
-      // n077 cells where RRU is AIR6419/AIR6449/AIR6472
-      var n077Cells=[];
-      ['ALPHA','BETA','GAMMA'].forEach(function(s){(g5['n077']||{})[s]&&g5['n077'][s].forEach(function(c){n077Cells.push(c);});});
-
-      // ulHeavyUeDetect
-      var ulTrueBands=['B4','B2','B66','B17','B14','B30','B5'];
-      var ulTrueCells=[],ulFalseCells=[];
-      ulTrueBands.forEach(function(band){if(secLTE[band])['ALPHA','BETA','GAMMA'].forEach(function(s){ulTrueCells=ulTrueCells.concat(allCells(band,s));});});
-      if(secLTE['B29'])['ALPHA','BETA','GAMMA'].forEach(function(s){ulFalseCells=ulFalseCells.concat(allCells('B29',s));});
-
-      // ReportConfigSearch: NonB30 = B2/B4/B66/B5/B17, B30 = B30 only — ALL cells
-      var nonB30SearchCells=[];
-      ['B2','B4','B66','B5','B17'].forEach(function(band){if(secLTE[band])['ALPHA','BETA','GAMMA'].forEach(function(s){nonB30SearchCells=nonB30SearchCells.concat(allCells(band,s));});});
-      var b30SearchCells=[];
-      if(secLTE['B30'])['ALPHA','BETA','GAMMA'].forEach(function(s){b30SearchCells=b30SearchCells.concat(allCells('B30',s));});
-
-      // a1a2SearchThreshold: B2/B4/B66/B5 + B30 (10MHz only) — ALL cells
-      var a1a2Cells=[];
-      ['B2','B4','B66','B5'].forEach(function(band){if(secLTE[band])['ALPHA','BETA','GAMMA'].forEach(function(s){a1a2Cells=a1a2Cells.concat(allCells(band,s));});});
-      if(secLTE['B30'])['ALPHA','BETA','GAMMA'].forEach(function(s){allCells('B30',s).forEach(function(c){var bw=cellBwMap[c];if(bw===10000||bw===6400)a1a2Cells.push(c);});});
-
-      // systemInformationBlock3: B2/B4/B66/B30 — ALL cells
-      var sib3Cells=[];
-      ['B2','B4','B66','B30'].forEach(function(band){if(secLTE[band])['ALPHA','BETA','GAMMA'].forEach(function(s){sib3Cells=sib3Cells.concat(allCells(band,s));});});
-
-      // ReportConfigEUtraIFBestCell cells — ALL cells
-      var ifBestCellB2466B5B30=[];
-      ['B2','B4','B66','B5'].forEach(function(band){if(secLTE[band])['ALPHA','BETA','GAMMA'].forEach(function(s){ifBestCellB2466B5B30=ifBestCellB2466B5B30.concat(allCells(band,s));});});
-      if(secLTE['B30'])['ALPHA','BETA','GAMMA'].forEach(function(s){allCells('B30',s).forEach(function(c){var bw=cellBwMap[c];if(bw===10000||bw===6400)ifBestCellB2466B5B30.push(c);});});
-      var ifBestB17Cells=[];
-      if(secLTE['B17'])['ALPHA','BETA','GAMMA'].forEach(function(s){ifBestB17Cells=ifBestB17Cells.concat(allCells('B17',s));});
-      var ifBestB14Cells=[];
-      if(secLTE['B14'])['ALPHA','BETA','GAMMA'].forEach(function(s){ifBestB14Cells=ifBestB14Cells.concat(allCells('B14',s));});
-      var ifBestB29Cells=[];
-      if(secLTE['B29'])['ALPHA','BETA','GAMMA'].forEach(function(s){ifBestB29Cells=ifBestB29Cells.concat(allCells('B29',s));});
-
-      // ReportConfigSearch a1a2SearchThresholdRsrq=-170: B17 and B14 ALL cells
-      var searchB17Cells=[];
-      if(secLTE['B17'])['ALPHA','BETA','GAMMA'].forEach(function(s){searchB17Cells=searchB17Cells.concat(allCells('B17',s));});
-      var searchB14Cells=[];
-      if(secLTE['B14'])['ALPHA','BETA','GAMMA'].forEach(function(s){searchB14Cells=searchB14Cells.concat(allCells('B14',s));});
-
-      // ReportConfigSearch B14+B17 cells
-      var b14b17SearchCells=[];
-      if(secLTE['B14'])['ALPHA','BETA','GAMMA'].forEach(function(s){b14b17SearchCells=b14b17SearchCells.concat(allCells('B14',s));});
-      if(secLTE['B17'])['ALPHA','BETA','GAMMA'].forEach(function(s){b14b17SearchCells=b14b17SearchCells.concat(allCells('B17',s));});
-
-      // ReportConfigSCellA6 B17+B14 — firstCell
-      var scellA6B17B14=[];
-      ['ALPHA','BETA','GAMMA'].forEach(function(s){var c=firstCell('B17',s);if(c)scellA6B17B14.push(c);});
-      ['ALPHA','BETA','GAMMA'].forEach(function(s){var c=firstCell('B14',s);if(c)scellA6B17B14.push(c);});
-
-      // SA 5G LB+MB sectors (850 + PCS/AWS) for FN_SA
-      var saLbMbCells=[];
-      ['850','PCS','AWS'].forEach(function(band){['ALPHA','BETA','GAMMA'].forEach(function(s){((saSectors[band]||{})[s]||[]).forEach(function(c){saLbMbCells.push(c);});});});
-      // SA CBand/DoD (n077) for FN_SA
-      var saCBandCells=[];
-      ['ALPHA','BETA','GAMMA'].forEach(function(s){((saSectors['n077']||{})[s]||[]).forEach(function(c){saCBandCells.push(c);});});
-
-      var feat4011254=([...rruSet,...rruSet5G].some(function(r){return r.indexOf('4890')>=0;}))?'ACTIVATED':'DEACTIVATED';
-
-      var out=[];
-      var add=function(fdnSuffix,params){
-        out.push('set');
-        out.push('FDN : "SubNetwork=ONRM_ROOT_MO,MeContext='+SITE_ID+',ManagedElement='+SITE_ID+','+fdnSuffix+'"');
-        Object.keys(params).forEach(function(k){out.push(k+' : '+params[k]);});
-        out.push('');
-      };
-      var addCreate=function(fdnSuffix,params){
-        out.push('create');
-        out.push('FDN : "SubNetwork=ONRM_ROOT_MO,MeContext='+SITE_ID+',ManagedElement='+SITE_ID+','+fdnSuffix+'"');
-        Object.keys(params).forEach(function(k){out.push(k+' : '+params[k]);});
-        out.push('');
-      };
-
-      // Site level
-      add('SystemFunctions=1,Lm=1,FeatureState=CXC4011958',{featureState:'DEACTIVATED'});
-      add('SystemFunctions=1,Lm=1,FeatureState=CXC4012383',{featureState:'ACTIVATED'});
-      add('SystemFunctions=1,Lm=1,FeatureState=CXC4012606',{featureState:'ACTIVATED'});
-      add('SystemFunctions=1,Lm=1,FeatureState=CXC4012477',{featureState:'ACTIVATED'});
-      add('SystemFunctions=1,Lm=1,FeatureState=CXC4011809',{featureState:'DEACTIVATED'});
-      add('SystemFunctions=1,Lm=1,FeatureState=CXC4011981',{featureState:'ACTIVATED'});
-      add('SystemFunctions=1,Lm=1,FeatureState=CXC4012475',{featureState:'ACTIVATED'});
-      add('SystemFunctions=1,Lm=1,FeatureState=CXC4012595',{featureState:'DEACTIVATED'});
-      add('SystemFunctions=1,Lm=1,FeatureState=CXC4012775',{featureState:'ACTIVATED'});
-      add('SystemFunctions=1,Lm=1,FeatureState=CXC4012659',{featureState:'ACTIVATED'});
-      add('SystemFunctions=1,Lm=1,FeatureState=CXC4012713',{featureState:'ACTIVATED'});
-      add('SystemFunctions=1,Fm=1,FmAlarmModel=1,FmAlarmType=WiFiServiceActivated',{configuredSeverity:'CRITICAL'});
-      add('GNBCUCPFunction=1,UeGroupSelection=1,UeServiceGroupDefinition=TurboLive',{selectionCriteria:'"(spid==19&&qci==7)||(rfsp==19&&5qi==7)"'});
-      add('GNBDUFunction=1,AdmissionControl=1',{admissionPrioThreshold:'1',rrcHighPriorityAccessPrio:'12'});
-
-      // (allLTECells now computed globally before this block)
-
-      // ReportConfigSCellA1A2 - ALL LTE sectors (V16 new params)
-      allLTECells.forEach(function(c){add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1,ReportConfigSCellA1A2=1',{a1a2ThresholdRsrq:'-195',hysteresisA1A2Rsrp:'40',hysteresisA1A2Rsrq:'0',timeToTriggerA2:'1024',triggerQuantityA1A2:'RSRQ'});});
-
-      // ReportConfigSCellA6 timeToTriggerA6 removed per V16
-
-      // primaryUpperLayerInd B29 always OFF + B14/B17 per existing logic
-      ['ALPHA','BETA','GAMMA'].forEach(function(s){var c=firstCell('B29',s);if(c)add('ENodeBFunction=1,EUtranCellFDD='+c,{primaryUpperLayerInd:'OFF'});});
-      primaryUpperLayerCells.forEach(function(item){add('ENodeBFunction=1,EUtranCellFDD='+item.cell,{primaryUpperLayerInd:item.val});});
-
-      // bothInterA3RsrpRsrqCheck: True for non-B29, false for B29
-      var nonB29Cells=[];
-      ['B17','B30','B2','B4','B66','B14','B5','B12'].forEach(function(band){
-        if(secLTE[band])['ALPHA','BETA','GAMMA'].forEach(function(s){nonB29Cells=nonB29Cells.concat(allCells(band,s));});
-      });
-      nonB29Cells.forEach(function(c){add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1',{bothInterA3RsrpRsrqCheck:'True'});});
-      ulFalseCells.forEach(function(c){add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1',{bothInterA3RsrpRsrqCheck:'false'});});
-
-      // interFreqHoHigherPrio: False for non-B17, True for B17
-      nonB29Cells.filter(function(c){return !allCells('B17','ALPHA').concat(allCells('B17','BETA')).concat(allCells('B17','GAMMA')).includes(c);})
-        .forEach(function(c){add('ENodeBFunction=1,EUtranCellFDD='+c,{interFreqHoHigherPrioEnabled:'False',interFreqHoHigherPrioEndc:'False'});});
-      if(secLTE['B17'])['ALPHA','BETA','GAMMA'].forEach(function(s){allCells('B17',s).forEach(function(c){add('ENodeBFunction=1,EUtranCellFDD='+c,{interFreqHoHigherPrioEnabled:'True',interFreqHoHigherPrioEndc:'True'});});});
-
-      // B14 interFreqHoHigherPrio removed per V16
-
-      // CellSleep
-      sleepCells.forEach(function(c){add('ENodeBFunction=1,EUtranCellFDD='+c+',CellSleepFunction=1',{sleepStartTime:'"02:00"'});});
-
-      // Features
-      add('SystemFunctions=1,Lm=1,FeatureState=CXC4011254',{featureState:feat4011254});
-      add('SystemFunctions=1,Lm=1,FeatureState=CXC4012817',{featureState:feat4012817});
-
-      // SA 850 RedCap
-      sa850Cells.forEach(function(c){add('GNBCUCPFunction=1,TrafficSteering=1,TrStSaCellProfile='+c+',TrStSaCellProfileUeCfg=RedCap',{criterionBetterUeConfig:'10'});});
-      // NSA Mcfb
-      nsaMcfbCells.forEach(function(c){add('GNBCUCPFunction=1,Mcfb=1,McfbCellProfile='+c+',McfbCellProfileUeCfg=Base',{rsrpCellCandidate:'{threshold=-140}'});});
-
-      // ulHeavyUeDetect
-      ulTrueCells.forEach(function(c){add('ENodeBFunction=1,EUtranCellFDD='+c,{ulHeavyUeDetectEnabled:'true'});});
-      ulFalseCells.forEach(function(c){add('ENodeBFunction=1,EUtranCellFDD='+c,{ulHeavyUeDetectEnabled:'false'});});
-
-      // n077 csiRsConfig32P (only if AIR)
-      if(n077Cells.length&&feat4012817==='ACTIVATED'){
-        n077Cells.forEach(function(c){
-          add('GNBDUFunction=1,NRCellDU='+c,{'csiRsConfig32P':'{csiRsControl32Ports=EIGHT_TWO_N1AZ,i11Restriction="FFFFFFFF",i12Restriction="FF"}','dlMaxMuMimoLayers':'8','maxNoOfAdvancedDlMuMimoLayers':'16','ulMaxMuMimoLayers':'4','advancedDlSuMimoEnabled':'true'});
-          add('GNBDUFunction=1,NRCellDU='+c,{pdcchCapacityBoostEnabled:'true'});
-        });
-      }
-
-      // ReportConfigSearch
-      nonB30SearchCells.forEach(function(c){add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1,ReportConfigSearch=1',{a2OuterSearchThrRsrpOffset:'-6',a2OuterSearchThrRsrqOffset:'-20'});});
-      b30SearchCells.forEach(function(c){add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1,ReportConfigSearch=1',{a2OuterSearchThrRsrpOffset:'-2'});});
-      b14b17SearchCells.forEach(function(c){add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1,ReportConfigSearch=1',{a2OuterSearchThrRsrqOffset:'0'});});
-
-      // B29 new params
-      ulFalseCells.forEach(function(c){
-        add('ENodeBFunction=1,EUtranCellFDD='+c,{pZeroNominalPucchBr:'-116'});
-        add('ENodeBFunction=1,EUtranCellFDD='+c,{pZeroNominalPuschBr:'-80'});
-        add('ENodeBFunction=1,EUtranCellFDD='+c,{servOrPrioIFHoSetupBearer:'false',spifhoDedicatedReportConfig:'False'});
-      });
-
-      // B14 ReportConfigA5
-      ['ALPHA','BETA','GAMMA'].forEach(function(s){var c=firstCell('B14',s);if(c)add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1,ReportConfigA5=1',{a5Threshold1Rsrp:'-116',a5Threshold2Rsrp:'-112'});});
-
-      add('SystemFunctions=1,Lm=1,FeatureState=CXC4011808',{featureState:'ACTIVATED'});
-      if(!hasB30) add('SystemFunctions=1,Lm=1,FeatureState=CXC4010955',{featureState:'DEACTIVATED'});
-      if(isSA) add('SystemFunctions=1,Lm=1,FeatureState=CXC4012856',{featureState:'ACTIVATED'});
-
-      // a1a2SearchThresholdRsrq
-      a1a2Cells.forEach(function(c){add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1,ReportConfigSearch=1',{a1a2SearchThresholdRsrq:'-185'});});
-      searchB17Cells.forEach(function(c){add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1,ReportConfigSearch=1',{a1a2SearchThresholdRsrq:'-170'});});
-      searchB14Cells.forEach(function(c){add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1,ReportConfigSearch=1',{a1a2SearchThresholdRsrq:'-170'});});
-
-      // ReportConfigEUtraIFBestCell
-      ifBestCellB2466B5B30.forEach(function(c){add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1,ReportConfigEUtraIFBestCell=1',{a3RsrqOffset:'-30'});});
-      ifBestB17Cells.forEach(function(c){add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1,ReportConfigEUtraIFBestCell=1',{a3RsrqOffset:'-10'});});
-      ifBestB14Cells.forEach(function(c){add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1,ReportConfigEUtraIFBestCell=1',{a3RsrqOffset:'-60'});});
-      ifBestB29Cells.forEach(function(c){add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1,ReportConfigEUtraIFBestCell=1',{a3RsrqOffset:'0'});});
-
-      // systemInformationBlock3
-      sib3Cells.forEach(function(c){add('ENodeBFunction=1,EUtranCellFDD='+c,{systemInformationBlock3:'{sNonIntraSearchQ=12,threshServingLowQ=12}'});});
-
-      // SchedulingProfile TurboLive
-      add('GNBDUFunction=1,UeCC=1,SchedulingProfile=TurboLive',{relativePriority:'64'});
-
-      // UlDataSplit (always - V16 change from SA only)
-      add('GNBCUCPFunction=1,UeCC=1,UlDataSplit=Default_endc,UlDataSplitUeCfg=Base',{initialUlPrimaryPathMode:'SCG'});
-
-      // TurboLive MO create+set
-      addCreate('GNBDUFunction=1,DUQosModifier=1,DUModified5qi=7,DUModified5qiUeCfg=TurboLive',{
-        'dUModified5qiUeCfgId':'"TurboLive"','l4sCfgRef':'<empty>',
-        'logicalChannelRef':'"SubNetwork=ONRM_ROOT_MO,MeContext='+SITE_ID+',ManagedElement='+SITE_ID+',GNBDUFunction=1,UeCC=1,LogicalChannel=Default"',
-        'packetDelayBudget':'<empty>','prefUeGroupList':'<empty>','priorityLevel':'68',
-        'srHandlingRef':'"SubNetwork=ONRM_ROOT_MO,MeContext='+SITE_ID+',ManagedElement='+SITE_ID+',GNBDUFunction=1,UeCC=1,SrHandling=Default"',
-        'ueConfGroupList':'8','ueGroupList':'<empty>','userLabel':'"TurboLive"'
-      });
-      add('GNBDUFunction=1,DUQosModifier=1,DUModified5qi=7,DUModified5qiUeCfg=TurboLive',{
-        'l4sCfgRef':'<empty>',
-        'logicalChannelRef':'"SubNetwork=ONRM_ROOT_MO,MeContext='+SITE_ID+',ManagedElement='+SITE_ID+',GNBDUFunction=1,UeCC=1,LogicalChannel=Default"',
-        'packetDelayBudget':'<empty>','prefUeGroupList':'<empty>','priorityLevel':'68',
-        'srHandlingRef':'"SubNetwork=ONRM_ROOT_MO,MeContext='+SITE_ID+',ManagedElement='+SITE_ID+',GNBDUFunction=1,UeCC=1,SrHandling=Default"',
-        'ueConfGroupList':'8','ueGroupList':'<empty>','userLabel':'"TurboLive"'
-      });
-
-      // SA LB+MB FN_SA
-      if(isSA){
-        saLbMbCells.forEach(function(c){add('GNBCUCPFunction=1,TrafficSteering=1,TrStSaCellProfile='+c+',TrStSaCellProfileUeCfg=FN_SA',{rsrpPCellCandidateB2:'{threshold2EUtra=-116}'});});
-        saCBandCells.forEach(function(c){add('GNBCUCPFunction=1,TrafficSteering=1,TrStSaCellProfile='+c+',TrStSaCellProfileUeCfg=FN_SA',{rsrpPCellCandidateB2:'{threshold2EUtra=-140}'});});
-      }
-      // NSA all NR sectors FN_SA timeToTrigger=640
-      var nsaAllCells=[];
-      Object.keys(nsaSectors).forEach(function(band){['ALPHA','BETA','GAMMA'].forEach(function(s){(nsaSectors[band][s]||[]).forEach(function(c){nsaAllCells.push(c);});});});
-      nsaAllCells.forEach(function(c){add('GNBCUCPFunction=1,TrafficSteering=1,TrStSaCellProfile='+c+',TrStSaCellProfileUeCfg=FN_SA',{rsrpPCellCandidateB2:'{timeToTrigger=640}'});});
-
-      // hiPrioDetEnabled: only n077 ONLY (no 850/PCS/AWS)
-      if(onlyCBand) n077Cells.forEach(function(c){add('GNBCUCPFunction=1,NRCellCU='+c,{hiPrioDetEnabled:'False'});});
-      add('GNBCUCPFunction=1,TrafficSteering=1,TrStPSCellProfile=Default,TrStPSCellProfileUeCfg=Base',{hiPrioDetMeasurementTime:'5000',hiPrioDetStartTime:'2000',rsrpCandidateA5:'{threshold2=-156}'});
-      add('GNBCUCPFunction=1,UeMC=1,UeMCNrFreqRelProfile=Default,UeMCNrFreqRelProfileUeCfg=Base',{connModePrioPSCell:'7'});
-      if(hasCBand) n077Cells.forEach(function(c){add('GNBDUFunction=1,NRCellDU='+c,{pdcchSymbConfig:'ADAPT_MAX_2'});});
-      if(feat4012817==='ACTIVATED') add('GNBDUFunction=1,UeCC=1,UplinkComp=1,UplinkCompUeCfg=Base',{uplinkCompUeEnabled:'True'});
-
-      // ReportConfigA5UlTrig ALL LTE sectors
-      allLTECells.forEach(function(c){add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1,ReportConfigA5UlTrig=1',{a5Threshold2Rsrp:'-120'});});
-
-      // ReportConfigSCellA6 B17+B14 timeToTriggerA6:40 removed per V16
-
-      // SchedulingProfile TurboLive schedulingAlgorithm (new V16)
-      add('GNBDUFunction=1,UeCC=1,SchedulingProfile=TurboLive',{schedulingAlgorithm:'PRIORITIZED_RATE'});
-
-      // ── V1 ADDITIONS ──
-
-      // Create UeMobilityGroupDefinition=FN_SA (always)
-      addCreate('GNBCUCPFunction=1,UeGroupSelection=1,UeMobilityGroupDefinition=FN_SA',{
-        selectionCriteria:'"rfsp==1 || rfsp==2"',
-        ueMobilityGroupDefinitionId:'"FN_SA"',
-        ueMobilityGroupId:'"16"',
-        ueMobilityGroupPriority:'160'
-      });
-
-      // SA: all 5G sectors TrStSaCellProfile FN_SA bwTrigISHoTriggerQuantity
-      if(isSA){
-        var allSACells=[];
-        Object.keys(saSectors).forEach(function(band){['ALPHA','BETA','GAMMA'].forEach(function(s){(saSectors[band][s]||[]).forEach(function(c){allSACells.push(c);});});});
-        allSACells.forEach(function(c){add('GNBCUCPFunction=1,TrafficSteering=1,TrStSaCellProfile='+c+',TrStSaCellProfileUeCfg=FN_SA',{bwTrigISHoTriggerQuantity:'RSRP'});});
-
-        // SA all sectors criterionDlAbsoluteOffset etc (big block)
-        allSACells.forEach(function(c){add('GNBCUCPFunction=1,TrafficSteering=1,TrStSaCellProfile='+c+',TrStSaCellProfileUeCfg=FN_SA',{
-          criterionDlAbsoluteOffset:'5',dataAwareMobDlPktAgeThr:'0',dataAwareMobDlPktVolThr:'0',
-          mlcTriggerQuantity:'RSRP',
-          rsrpPCellCandidate:'{hysteresis=10,threshold2=-104,timeToTrigger=640}',
-          rsrpPCellCandidateAddTargEval:'NONE',
-          rsrpPCellCandidateB2:'{hysteresis=10,threshold1=-29,timeToTrigger=640}',
-          rsrpPCellCandidateB2AddTargEval:'NONE',
-          rsrpPCellCandidateB2PcOffset:'{powerClass=2,threshold1Offset=0}',
-          rsrpPCellCandidatePcOffset:'{powerClass=2,threshold2Offset=0}',
-          rsrpSCellCandidate:'{hysteresis=10,threshold2=-156,timeToTrigger=640}',
-          rsrqPCellCandidate:'{hysteresis=10,threshold2=-435,timeToTrigger=640}',
-          rsrqPCellCandidateAddTargEval:'NONE',
-          rsrqPCellCandidateB2:'{hysteresis=10,threshold1=-435,threshold2EUtra=-195,timeToTrigger=640}',
-          rsrqPCellCandidateB2AddTargEval:'NONE',
-          rsrqSCellCandidate:'{hysteresis=10,threshold2=-435,timeToTrigger=640}',
-          sinrPCellCandidate:'{hysteresis=10,threshold2=-230,timeToTrigger=640}',
-          sinrPCellCandidateAddTargEval:'NONE',
-          sinrPCellCandidateB2:'{hysteresis=10,threshold1=-230,threshold2EUtra=-230,timeToTrigger=640}',
-          sinrPCellCandidateB2AddTargEval:'NONE',
-          sinrSCellCandidate:'{hysteresis=10,threshold2=-230,timeToTrigger=640}',
-          t320:'180'
-        });});
-
-        // SA non-CBand (850/PCS/AWS) sectors aggregatedBwThreshold:25
-        var saNonCBandCells=[];
-        ['850','PCS','AWS'].forEach(function(band){['ALPHA','BETA','GAMMA'].forEach(function(s){(saSectors[band]||{})[s]&&(saSectors[band][s]).forEach(function(c){saNonCBandCells.push(c);});});});
-        if(saNonCBandCells.length){
-          saNonCBandCells.forEach(function(c){add('GNBCUCPFunction=1,TrafficSteering=1,TrStSaCellProfile='+c+',TrStSaCellProfileUeCfg=FN_SA',{
-            aggregatedBwThreshold:'25',bwTrigISHoEnabled:'True',criterionBetterUeConfig:'10',
-            dataAwareMobLowDlThpThr:'10000',dataAwareMobLowUlThpThr:'3000',
-            rsrpPCellCandidateB2:'{threshold2EUtra=-116}'
-          });});
-        }
-
-        // SA CBand (n077) sectors aggregatedBwThreshold:10
-        if(saCBandCells.length){
-          saCBandCells.forEach(function(c){add('GNBCUCPFunction=1,TrafficSteering=1,TrStSaCellProfile='+c+',TrStSaCellProfileUeCfg=FN_SA',{
-            aggregatedBwThreshold:'10',bwTrigISHoEnabled:'False',criterionBetterUeConfig:'100',
-            dataAwareMobLowDlThpThr:'0',dataAwareMobLowUlThpThr:'0',
-            mlcAllowedCellSetChangeAction:'HANDOVER',mlcPeriodicEnabled:'False',mlcPeriodicInterval:'15',
-            rsrpPCellCandidateB2:'{threshold2EUtra=-140}'
-          });});
-
-          // n077 SA bwDL <= 30 → mlcEnabled:True, > 30 → mlcEnabled:False
-          saCBandCells.forEach(function(c){
-            var bw=n077BwDLMap[c]||0;
-            if(bw<=30) add('GNBCUCPFunction=1,TrafficSteering=1,TrStSaCellProfile='+c+',TrStSaCellProfileUeCfg=FN_SA',{mlcEnabled:'True'});
-            else add('GNBCUCPFunction=1,TrafficSteering=1,TrStSaCellProfile='+c+',TrStSaCellProfileUeCfg=FN_SA',{mlcEnabled:'False'});
-          });
-        }
-
-        // SA LB+MB without n077 → mlcAllowedCellSetChangeAction:HANDOVER mlcEnabled:False
-        if(!hasCBand&&saNonCBandCells.length){
-          saNonCBandCells.forEach(function(c){add('GNBCUCPFunction=1,TrafficSteering=1,TrStSaCellProfile='+c+',TrStSaCellProfileUeCfg=FN_SA',{
-            mlcAllowedCellSetChangeAction:'HANDOVER',mlcEnabled:'False',mlcPeriodicEnabled:'False',mlcPeriodicInterval:'15'
-          });});
-        }
-        // SA LB+MB with n077 → mlcAllowedCellSetChangeAction:HO_AND_SCELL_RESELECTION mlcEnabled:True
-        if(hasCBand&&saNonCBandCells.length){
-          saNonCBandCells.forEach(function(c){add('GNBCUCPFunction=1,TrafficSteering=1,TrStSaCellProfile='+c+',TrStSaCellProfileUeCfg=FN_SA',{
-            mlcAllowedCellSetChangeAction:'HO_AND_SCELL_RESELECTION',mlcEnabled:'True',mlcPeriodicEnabled:'True',mlcPeriodicInterval:'30'
-          });});
-        }
-      }
-
-      // inhibitA2SearchConfig: B17+B29 → INHIBIT_A2SEARCH_RSRP
-      var b17b29Cells=[];
-      ['ALPHA','BETA','GAMMA'].forEach(function(s){b17b29Cells=b17b29Cells.concat(allCells('B17',s));});
-      if(secLTE['B29'])['ALPHA','BETA','GAMMA'].forEach(function(s){b17b29Cells=b17b29Cells.concat(allCells('B29',s));});
-      b17b29Cells.forEach(function(c){add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1,ReportConfigSearch=1',{inhibitA2SearchConfig:'INHIBIT_A2SEARCH_RSRP'});});
-
-      // B2/B4/B66/B5/B30 → NOT_INHIBIT
-      var otherSearchCells=[];
-      ['B2','B4','B66','B5','B30'].forEach(function(band){if(secLTE[band])['ALPHA','BETA','GAMMA'].forEach(function(s){otherSearchCells=otherSearchCells.concat(allCells(band,s));});});
-      otherSearchCells.forEach(function(c){add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1,ReportConfigSearch=1',{inhibitA2SearchConfig:'NOT_INHIBIT'});});
-
-      // B14 → INHIBIT_A2SEARCH_RSRQ
-      var b14AllCells=[];
-      ['ALPHA','BETA','GAMMA'].forEach(function(s){b14AllCells=b14AllCells.concat(allCells('B14',s));});
-      b14AllCells.forEach(function(c){add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1,ReportConfigSearch=1',{inhibitA2SearchConfig:'INHIBIT_A2SEARCH_RSRQ'});});
-
-      // B14 servOrPrioTriggeredIFHo:ARP
-      b14AllCells.forEach(function(c){add('ENodeBFunction=1,EUtranCellFDD='+c,{servOrPrioTriggeredIFHo:'ARP'});});
-
-      // B14 SubscriberGroupProfile create with cellTriggerList
-      if(b14CellIds.length){
-        addCreate('ENodeBFunction=1,SubscriberGroupProfile=1',{cellTriggerList:'['+b14CellIds.join(',')+']'});
-      }
-
-      // a1a2SearchThresholdRsrp: B14→-85, B30→-124, B2/B4/B66/B5/B17→-118
-      b14AllCells.forEach(function(c){add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1,ReportConfigSearch=1',{a1a2SearchThresholdRsrp:'-85'});});
-      if(secLTE['B30'])['ALPHA','BETA','GAMMA'].forEach(function(s){allCells('B30',s).forEach(function(c){add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1,ReportConfigSearch=1',{a1a2SearchThresholdRsrp:'-124'});});});
-      var otherRsrpCells=[];
-      ['B2','B4','B66','B5','B17'].forEach(function(band){if(secLTE[band])['ALPHA','BETA','GAMMA'].forEach(function(s){otherRsrpCells=otherRsrpCells.concat(allCells(band,s));});});
-      otherRsrpCells.forEach(function(c){add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1,ReportConfigSearch=1',{a1a2SearchThresholdRsrp:'-118'});});
-
-      // CXC4012816: if AIR6419/6449/6472
-      if(feat4012817==='ACTIVATED') add('SystemFunctions=1,Lm=1,FeatureState=CXC4012816',{featureState:'ACTIVATED'});
-
-      // NetworkLicensing euft (always)
-      add('NodeSupport=1,LicenseSupport=1,NetworkLicensing=1',{euft:'<empty>'});
-
-      // ALL LTE sectors loopingEndcProtectionEnabled + restartBufMonAtMobility
-      allLTECells.forEach(function(c){add('ENodeBFunction=1,EUtranCellFDD='+c,{loopingEndcProtectionEnabled:'True',restartBufMonAtMobility:'True'});});
-
-      // ALL LTE sectors endcSetupUlBsVolThr + endcSetupDlBsVolThr
-      allLTECells.forEach(function(c){add('ENodeBFunction=1,EUtranCellFDD='+c,{endcSetupUlBsVolThr:'10000'});});
-      allLTECells.forEach(function(c){add('ENodeBFunction=1,EUtranCellFDD='+c,{endcSetupDlPktVolThr:'50'});});
-
-      // If site has 5G sectors: ReportConfigA5EndcHo=1 for ALL LTE sectors
-      if(Object.keys(g5).length>0){
-        allLTECells.forEach(function(c){add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1,ReportConfigA5EndcHo=1',{reportAmountA5:'8'});});
-      }
-
-      // ── V2 ADDITIONS ──
-
-      // interFreqHoHigherPrioEndc: B17→True, non-B17→False
-      var b17AllCells=[];
-      ['ALPHA','BETA','GAMMA'].forEach(function(s){b17AllCells=b17AllCells.concat(allCells('B17',s));});
-      b17AllCells.forEach(function(c){add('ENodeBFunction=1,EUtranCellFDD='+c,{interFreqHoHigherPrioEndc:'True'});});
-      var nonB17AllCells=allLTECells.filter(function(c){return b17AllCells.indexOf(c)<0;});
-      nonB17AllCells.forEach(function(c){add('ENodeBFunction=1,EUtranCellFDD='+c,{interFreqHoHigherPrioEndc:'False'});});
-
-      // ReportConfigB1GUtra: if 5G present→all LTE MS_480, if no 5G→all LTE MS_120
-      var has5G=Object.keys(g5).length>0;
-      if(has5G){
-        allLTECells.forEach(function(c){add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1,ReportConfigB1GUtra=1',{reportIntervalB1:'MS_480'});});
-      } else {
-        allLTECells.forEach(function(c){add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1,ReportConfigB1GUtra=1',{reportIntervalB1:'MS_120'});});
-      }
-
-      // CXC4012519, CXC4012601 (always)
-      add('SystemFunctions=1,Lm=1,FeatureState=CXC4012519',{featureState:'ACTIVATED'});
-      add('SystemFunctions=1,Lm=1,FeatureState=CXC4012601',{featureState:'ACTIVATED'});
-
-      // McpcPSCellProfile: all 5G sectors
-      var allNRCells=[];
-      Object.keys(g5).forEach(function(band){['ALPHA','BETA','GAMMA'].forEach(function(s){(g5[band][s]||[]).forEach(function(c){allNRCells.push(c);});});});
-      allNRCells.forEach(function(c){add('GNBCUCPFunction=1,Mcpc=1,McpcPSCellProfile='+c+',McpcPSCellProfileUeCfg=Base',{lowHighFreqPrioClassification:'6'});});
-
-      // QciProfileOperatorDefined (always)
-      add('ENodeBFunction=1,QciTable=default,QciProfileOperatorDefined=qci199',{dataFwdPerQciEnabled:'true'});
-
-      // CXC4012082 (always)
-      add('SystemFunctions=1,Lm=1,FeatureState=CXC4012082',{featureState:'ACTIVATED'});
-
-      // CATm commands - always generate (no condition)
-      add('ENodeBFunction=1,Paging=1',{pagingAssistDataSupportBr:'ASSISTANCE_DATA_CELL_ID'});
-      ['CXC4012302','CXC4012320','CXC4012323','CXC4012359','CXC4012425','CXC4012539','CXC4012545','CXC4012572','CXC4012608'].forEach(function(cxc){
-        add('SystemFunctions=1,Lm=1,FeatureState='+cxc,{featureState:'ACTIVATED'});
-      });
-      add('ENodeBFunction=1,Rcs=1',{raiReleaseDelayTimerBr:'5'});
-
-      // SA LB+MB (850/PCS/AWS) TrStSaCellProfile RedCap create+set
-      if(isSA&&saLbMbCells.length){
-        saLbMbCells.forEach(function(c){
-          addCreate('GNBCUCPFunction=1,TrafficSteering=1,TrStSaCellProfile='+c+',TrStSaCellProfileUeCfg=RedCap',{criterionBetterUeConfig:'10'});
-          add('GNBCUCPFunction=1,TrafficSteering=1,TrStSaCellProfile='+c+',TrStSaCellProfileUeCfg=RedCap',{criterionBetterUeConfig:'10'});
-        });
-      }
-
-      // McpcPSCellProfile LB+MB only (850/PCS/AWS, not n077)
-      var lbMbNRCells=[];
-      ['850','PCS','AWS'].forEach(function(band){['ALPHA','BETA','GAMMA'].forEach(function(s){(g5[band]||{})[s]&&g5[band][s].forEach(function(c){lbMbNRCells.push(c);});});});
-      lbMbNRCells.forEach(function(c){add('GNBCUCPFunction=1,Mcpc=1,McpcPSCellProfile='+c+',McpcPSCellProfileUeCfg=Base',{rsrpSearchZone:'{threshold=-113}'});});
-
-      // CXC4012704: only if B17 present AND B5 with ulChannelBandwidth=5MHz
-      if(secLTE['B17']&&hasB5_5MHz){
-        add('SystemFunctions=1,Lm=1,FeatureState=CXC4012704',{featureState:'ACTIVATED'});
-      }
-
-      var ndsOut=out.join('\n').replace(/\n{3,}/g,'\n\n').trim()+'\n';
-      await addDl(ndsOut,SITE_ID+'_NDS_DELTA.txt','NDS Delta Script');
-
-      // cmedit file
-      var cmeditOut='cmedit set '+SITE_ID+' EUtranFreqRelation cellReselectionPriorityBr=7\ncmedit set '+SITE_ID+' EUtranCellRelation qOffsetCellEUtran=0\n';
-      await addDl(cmeditOut,SITE_ID+'_cmedit.txt','cmedit Commands');
-    }
-
     // FGA DELTA
     if(sel.fga){
       var gen=fgaGen==='auto'?autoGen:(fgaGen==='G2'?'G2':'G3G4');
@@ -1798,531 +3025,37 @@ async function generate(){
       await addDl(fgaOut,SITE_ID+'_FGA_DELTA.txt','FGA Delta Script ('+gen+')');
     }
 
-    // ══ V3 — STANDALONE INDEPENDENT TEMPLATE ══
-    if(sel.v3){
-      var v3out=[];
-      var v3add=function(fdnSuffix,params){
-        v3out.push('set');
-        v3out.push('FDN : "SubNetwork=ONRM_ROOT_MO,MeContext='+SITE_ID+',ManagedElement='+SITE_ID+','+fdnSuffix+'"');
-        Object.keys(params).forEach(function(k){v3out.push(k+' : '+params[k]);});
-        v3out.push('');
+    // NDS DELTA (runs the original NDS_con_1.py, unmodified, via Pyodide)
+    if(sel.nds){
+      bt.textContent='Loading NDS engine...';
+      var pyodide=await ensurePyodide();
+      bt.textContent='Running NDS Delta...';
+      pyodide.FS.writeFile('/ciq_input.xlsx', new Uint8Array(ab));
+      var nodeOptions={
+        HiCap: ndsOpts.hicap,
+        DSS: ndsOpts.dss,
+        iDAS: ndsOpts.idas,
+        NODE_BANDS: {}
       };
-      var v3addCreate=function(fdnSuffix,params){
-        v3out.push('create');
-        v3out.push('FDN : "SubNetwork=ONRM_ROOT_MO,MeContext='+SITE_ID+',ManagedElement='+SITE_ID+','+fdnSuffix+'"');
-        Object.keys(params).forEach(function(k){v3out.push(k+' : '+params[k]);});
-        v3out.push('');
-      };
-
-      // B29 sectors (all cells)
-      var v3B29Cells=[];
-      if(secLTE['B29'])['ALPHA','BETA','GAMMA'].forEach(function(s){v3B29Cells=v3B29Cells.concat(allCells('B29',s));});
-      // B14 sectors (all cells)
-      var v3B14Cells=[];
-      if(secLTE['B14'])['ALPHA','BETA','GAMMA'].forEach(function(s){v3B14Cells=v3B14Cells.concat(allCells('B14',s));});
-      // B17 sectors (all cells)
-      var v3B17Cells=[];
-      if(secLTE['B17'])['ALPHA','BETA','GAMMA'].forEach(function(s){v3B17Cells=v3B17Cells.concat(allCells('B17',s));});
-      // B2/B4/B66 5MHz check (dlChannelBandwidth=5000)
-      var v3Has2466_5MHz=false;
-      ['B2','B4','B66'].forEach(function(band){if(secLTE[band])['ALPHA','BETA','GAMMA'].forEach(function(s){allCells(band,s).forEach(function(c){if(cellBwMap[c]===5000)v3Has2466_5MHz=true;});});});
-      // MB5 sectors: any sector with dlChannelBandwidth=5000 (all bands)
-      var v3MB5Cells=[];
-      Object.keys(secLTE).forEach(function(band){if(band.indexOf('_first')>=0)return;['ALPHA','BETA','GAMMA'].forEach(function(s){allCells(band,s).forEach(function(c){if(cellBwMap[c]===5000)v3MB5Cells.push(c);});});});
-      // B2/B4/B66 5MHz specific cells
-      var v3_2466_5MHzCells=[];
-      ['B2','B4','B66'].forEach(function(band){if(secLTE[band])['ALPHA','BETA','GAMMA'].forEach(function(s){allCells(band,s).forEach(function(c){if(cellBwMap[c]===5000)v3_2466_5MHzCells.push(c);});});});
-      // B14+B17+B29 combined
-      var v3B14B17B29Cells=v3B14Cells.concat(v3B17Cells).concat(v3B29Cells);
-      // Other sectors: B2/B4/B66/B5/B30 with >5MHz
-      var v3OtherCells=[];
-      ['B2','B4','B66','B5','B30'].forEach(function(band){if(secLTE[band])['ALPHA','BETA','GAMMA'].forEach(function(s){allCells(band,s).forEach(function(c){if(cellBwMap[c]!==5000)v3OtherCells.push(c);});});});
-      // B30 WCS_Slim vs non-WCS_Slim (check eUTRA operating band text for "WCS" or "Slim")
-      var v3B30Slim=[],v3B30NonSlim=[];
-      if(secLTE['B30'])['ALPHA','BETA','GAMMA'].forEach(function(s){
-        allCells('B30',s).forEach(function(c){
-          var bandTxt=(b30BandTextMap[c]||'').toUpperCase();
-          if(bandTxt.indexOf('WCS')>=0&&bandTxt.indexOf('SLIM')>=0) v3B30Slim.push(c);
-          else v3B30NonSlim.push(c);
-        });
-      });
-      // B17 + non-B17
-      var v3NonB17Cells=allLTECells.filter(function(c){return v3B17Cells.indexOf(c)<0;});
-
-      // ── V3 COMMANDS ──
-      v3B29Cells.forEach(function(c){v3add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1,ReportConfigSCellA1A2=1',{a1a2ThresholdRsrq:'-165'});});
-
-      // B17 sectors always included regardless of bandwidth
-      v3B17Cells.forEach(function(c){v3add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1,ReportConfigSearch=1',{a1a2SearchThresholdRsrq:'-170'});});
-      // B2/B4/B66 with 5MHz - independent inclusion
-      v3_2466_5MHzCells.forEach(function(c){v3add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1,ReportConfigSearch=1',{a1a2SearchThresholdRsrq:'-170'});});
-      v3B14Cells.forEach(function(c){v3add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1,ReportConfigSearch=1',{a1a2SearchThresholdRsrq:'-150'});});
-
-      // B17 sectors always included regardless of bandwidth
-      v3B17Cells.forEach(function(c){v3add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1,ReportConfigSearch=1',{a2OuterSearchThrRsrpOffset:'0'});});
-
-      v3B29Cells.forEach(function(c){v3add('ENodeBFunction=1,EUtranCellFDD='+c,{endcSetupUlBsVolThr:'0'});});
-      v3B29Cells.forEach(function(c){v3add('ENodeBFunction=1,EUtranCellFDD='+c,{loopingEndcProtectionEnabled:'False'});});
-      v3B29Cells.forEach(function(c){v3add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1,ReportConfigA5EndcHo=1',{reportAmountA5:'0'});});
-      v3B29Cells.forEach(function(c){v3add('ENodeBFunction=1,EUtranCellFDD='+c,{restartBufMonAtMobility:'false'});});
-
-      v3_2466_5MHzCells.forEach(function(c){v3add('ENodeBFunction=1,EUtranCellFDD='+c,{systemInformationBlock3:'{sNonIntraSearchQ=17,threshServingLowQ=17}'});});
-
-      if(v3_2466_5MHzCells.length){
-        v3_2466_5MHzCells.forEach(function(c){v3add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1,ReportConfigSearch=1',{a2OuterSearchThrRsrqOffset:'-20'});});
+      if(ndsOpts.fnsa) nodeOptions.NODE_BANDS[SITE_ID]={FN_SA:true};
+      pyodide.globals.set('excel_path_js','/ciq_input.xlsx');
+      pyodide.globals.set('node_options_js', pyodide.toPy(nodeOptions));
+      var resultProxy=await pyodide.runPythonAsync('NDS_delta_generator(excel_path_js, node_options_js)');
+      var resultObj=resultProxy.toJs({dict_converter: Object.fromEntries});
+      resultProxy.destroy();
+      var siteKeys=Object.keys(resultObj);
+      if(!siteKeys.length){
+        alert('NDS Delta: no output was generated for this CIQ (check that the site qualifies under the current rules).');
       }
-      v3B14B17B29Cells.forEach(function(c){v3add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1,ReportConfigSearch=1',{a2OuterSearchThrRsrqOffset:'0'});});
-      v3OtherCells.forEach(function(c){v3add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1,ReportConfigSearch=1',{a2OuterSearchThrRsrqOffset:'-10'});});
-
-      if(v3_2466_5MHzCells.length){
-        v3_2466_5MHzCells.forEach(function(c){v3add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1,ReportConfigEUtraIFBestCell=1',{a3RsrqOffset:'-10'});});
+      for(var si=0;si<siteKeys.length;si++){
+        var pair=resultObj[siteKeys[si]]; // [filename, content]
+        await addDl(pair[1], pair[0], 'NDS Delta Script ('+siteKeys[si]+')');
       }
-
-      v3B29Cells.forEach(function(c){v3add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1,ReportConfigSCellA1A2=1',{hysteresisA1A2Rsrp:'10',hysteresisA1A2Rsrq:'15',timeToTriggerA2:'40',triggerQuantityA1A2:'RSRP'});});
-      v3B29Cells.forEach(function(c){v3add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1,ReportConfigSCellA6=1',{timeToTriggerA6:'40'});});
-
-      v3B30NonSlim.forEach(function(c){v3add('ENodeBFunction=1,EUtranCellFDD='+c,{
-        ailgRef:'"SubNetwork=ONRM_ROOT_MO,MeContext='+SITE_ID+',ManagedElement='+SITE_ID+',ENodeBFunction=1,AirIfLoadProfile=4"',
-        dlCchAndRefSigBlockActive:'false',dlCchAndRefSigBoost:'false',dlConfigurableFrequencyStart:'0',dlFrequencyAllocationProportion:'100'
-      });});
-      v3B30NonSlim.forEach(function(c){v3add('ENodeBFunction=1,EUtranCellFDD='+c,{dlInterferenceManagementActive:'true'});});
-
-      v3B30Slim.forEach(function(c){v3add('ENodeBFunction=1,EUtranCellFDD='+c,{
-        ailgRef:'"SubNetwork=ONRM_ROOT_MO,MeContext='+SITE_ID+',ManagedElement='+SITE_ID+',ENodeBFunction=1,AirIfLoadProfile=WCS_Slim"',
-        dlCchAndRefSigBlockActive:'True',dlCchAndRefSigBoost:'True',dlConfigurableFrequencyStart:'37',dlFrequencyAllocationProportion:'64',dlInterferenceManagementActive:'False'
-      });});
-
-      v3B17Cells.forEach(function(c){v3add('ENodeBFunction=1,EUtranCellFDD='+c,{interFreqHoHigherPrioEndc:'True',interFreqHoHigherPrioSnRel:'True'});});
-      v3NonB17Cells.forEach(function(c){v3add('ENodeBFunction=1,EUtranCellFDD='+c,{interFreqHoHigherPrioEndc:'False',interFreqHoHigherPrioSnRel:'False'});});
-
-      var v3Has5G=Object.keys(g5).length>0;
-      // If 5G present: thresholds 30/30/200
-      if(v3Has5G){
-        v3add('ENodeBFunction=1,CarrierAggregationFunction=1',{dcSCellActDeactDataThres:'30',dcSCellActDeactDataThresHyst:'30',dcSCellDeactDelayTimer:'200'});
-      } else {
-        // If no 5G present: thresholds 100/90/50
-        v3add('ENodeBFunction=1,CarrierAggregationFunction=1',{dcSCellActDeactDataThres:'100',dcSCellActDeactDataThresHyst:'90',dcSCellDeactDelayTimer:'50'});
-      }
-
-      if(secLTE['B17']){
-        v3add('SystemFunctions=1,Lm=1,FeatureState=CXC4012704',{featureState:'ACTIVATED'});
-      }
-
-      v3addCreate('GNBCUCPFunction=1,UeGroupSelection=1,UeServiceGroupDefinition=TurboLive',{
-        ueServiceGroupId:'"8"',ueServiceGroupPriority:'80',selectionCriteria:'"(spid==19&&qci==7)||(rfsp==19&&5qi==7)"'
-      });
-      v3add('GNBCUCPFunction=1,UeGroupSelection=1,UeServiceGroupDefinition=TurboLive',{
-        selectionCriteria:'"(spid==19&&qci==7)||(rfsp==19&&5qi==7)"',ueServiceGroupId:'"8"',ueServiceGroupPriority:'80'
-      });
-
-      if(v3B14Cells.length){
-        v3add('ENodeBFunction=1,AdmissionControl=1',{dlAdmDifferentiationThr:'949'});
-        v3add('ENodeBFunction=1,PtmFunction=1',{ptmEnabled:'True'});
-      } else {
-        v3add('ENodeBFunction=1,PtmFunction=1',{ptmEnabled:'False'});
-      }
-
-      var v3Out=v3out.join('\n').replace(/\n{3,}/g,'\n\n').trim()+'\n';
-      await addDl(v3Out,SITE_ID+'_NDS_DELTA_V3.txt','NDS Delta V3 Script (Standalone)');
     }
 
-    // ══ V4 — STANDALONE INDEPENDENT TEMPLATE ══
-    if(sel.v4){
-      var v4out=[];
-      var v4add=function(fdnSuffix,params){
-        v4out.push('set');
-        v4out.push('FDN : "SubNetwork=ONRM_ROOT_MO,MeContext='+SITE_ID+',ManagedElement='+SITE_ID+','+fdnSuffix+'"');
-        Object.keys(params).forEach(function(k){v4out.push(k+' : '+params[k]);});
-        v4out.push('');
-      };
-
-      // B17 sectors (all cells)
-      var v4B17Cells=[];
-      if(secLTE['B17'])['ALPHA','BETA','GAMMA'].forEach(function(s){v4B17Cells=v4B17Cells.concat(allCells('B17',s));});
-      // B14 sectors (all cells)
-      var v4B14Cells=[];
-      if(secLTE['B14'])['ALPHA','BETA','GAMMA'].forEach(function(s){v4B14Cells=v4B14Cells.concat(allCells('B14',s));});
-      // All LTE sectors (reuse global allLTECells)
-      // Others = all LTE except B14 and B17
-      var v4OthersExclB14B17=allLTECells.filter(function(c){return v4B17Cells.indexOf(c)<0&&v4B14Cells.indexOf(c)<0;});
-      // Others = all LTE except B17 only
-      var v4OthersExclB17=allLTECells.filter(function(c){return v4B17Cells.indexOf(c)<0;});
-
-      // ── V4 COMMANDS ──
-
-      // B17: ReportConfigA5Spifho
-      v4B17Cells.forEach(function(c){v4add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1,ReportConfigA5Spifho=1',{a5Threshold2Rsrp:'-115',a5Threshold2Rsrq:'-150',timeToTriggerA5:'640'});});
-
-      // B14: ReportConfigA5Spifho
-      v4B14Cells.forEach(function(c){v4add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1,ReportConfigA5Spifho=1',{a5Threshold2Rsrp:'-116',a5Threshold2Rsrq:'-160',timeToTriggerA5:'40'});});
-
-      // Others (excl B14, B17): ReportConfigA5Spifho
-      v4OthersExclB14B17.forEach(function(c){v4add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1,ReportConfigA5Spifho=1',{a5Threshold2Rsrp:'-110',a5Threshold2Rsrq:'-150',timeToTriggerA5:'80'});});
-
-      // CXC4011255: only on non-high-capacity sites
-      if(!isHiCapSite){
-        v4add('SystemFunctions=1,Lm=1,FeatureState=CXC4011255',{featureState:'ACTIVATED'});
-      }
-
-      // B17: ReportConfigA1A2HigherPrio
-      v4B17Cells.forEach(function(c){v4add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1,ReportConfigA1A2HigherPrio=1',{thresholdRsrp:'-104'});});
-
-      // B17: ReportConfigA5InterFreqHigherPrio
-      v4B17Cells.forEach(function(c){v4add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1,ReportConfigA5InterFreqHigherPrio=1',{a5Threshold2Rsrp:'-115',a5Threshold2Rsrq:'-150'});});
-
-      // Others (excl B17 only): ReportConfigA1A2HigherPrio
-      v4OthersExclB17.forEach(function(c){v4add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1,ReportConfigA1A2HigherPrio=1',{thresholdRsrp:'-126'});});
-
-      // Others (excl B17 only): ReportConfigA5InterFreqHigherPrio
-      v4OthersExclB17.forEach(function(c){v4add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1,ReportConfigA5InterFreqHigherPrio=1',{a5Threshold2Rsrp:'-140',a5Threshold2Rsrq:'-195'});});
-
-      var v4Out=v4out.join('\n').replace(/\n{3,}/g,'\n\n').trim()+'\n';
-      await addDl(v4Out,SITE_ID+'_NDS_DELTA_V4.txt','NDS Delta V4 Script (Standalone)');
-    }
-
-    // ══ V5 — STANDALONE INDEPENDENT TEMPLATE ══
-    if(sel.v5){
-      var v5out=[];
-      var v5add=function(fdnSuffix,params){
-        v5out.push('set');
-        v5out.push('FDN : "SubNetwork=ONRM_ROOT_MO,MeContext='+SITE_ID+',ManagedElement='+SITE_ID+','+fdnSuffix+'"');
-        Object.keys(params).forEach(function(k){v5out.push(k+' : '+params[k]);});
-        v5out.push('');
-      };
-
-      // SA NR_FDD (850/PCS/AWS only, no n077)
-      var v5SACells=[];
-      ['850','PCS','AWS'].forEach(function(band){['ALPHA','BETA','GAMMA'].forEach(function(s){((saSectors[band]||{})[s]||[]).forEach(function(c){v5SACells.push(c);});});});
-
-      // NSA NR_FDD (850/PCS/AWS only, no n077)
-      var v5NSACells=[];
-      ['850','PCS','AWS'].forEach(function(band){['ALPHA','BETA','GAMMA'].forEach(function(s){((nsaSectors[band]||{})[s]||[]).forEach(function(c){v5NSACells.push(c);});});});
-
-      // All NR_FDD (850/PCS/AWS) regardless of SA/NSA
-      var v5AllNRFDDCells=[];
-      ['850','PCS','AWS'].forEach(function(band){['ALPHA','BETA','GAMMA'].forEach(function(s){(g5[band]||{})[s]&&g5[band][s].forEach(function(c){v5AllNRFDDCells.push(c);});});});
-
-      // ── V5 COMMANDS ──
-
-      // SA NRCellCU sNonIntraSearchQ:1
-      v5SACells.forEach(function(c){v5add('GNBCUCPFunction=1,NRCellCU='+c,{sNonIntraSearchQ:'1'});});
-
-      // NSA NRCellCU sNonIntraSearchQ:2
-      v5NSACells.forEach(function(c){v5add('GNBCUCPFunction=1,NRCellCU='+c,{sNonIntraSearchQ:'2'});});
-
-      // All NR_FDD McpcPCellProfile rsrpCritical
-      v5AllNRFDDCells.forEach(function(c){v5add('GNBCUCPFunction=1,Mcpc=1,McpcPCellProfile='+c+',McpcPCellProfileUeCfg=Base',{rsrpCritical:'{threshold=-115}'});});
-
-      // SA site: CallQueuingProfile PRIORITIZED_ONLY (based on overall site SA/NSA status, not restricted to specific bands)
-      var v5SiteIsSA=Object.keys(saSectors).length>0;
-      var v5SiteIsNSA=Object.keys(nsaSectors).length>0;
-      if(v5SiteIsSA){
-        v5add('GNBDUFunction=1,AdmissionControl=1,CallQueuing=1,CallQueuingProfile=Default',{queueRrcRequestMode:'PRIORITIZED_ONLY'});
-      }
-      // NSA site: CallQueuingProfile DISABLED
-      if(v5SiteIsNSA){
-        v5add('GNBDUFunction=1,AdmissionControl=1,CallQueuing=1,CallQueuingProfile=Default',{queueRrcRequestMode:'DISABLED'});
-      }
-
-      var v5Out=v5out.join('\n').replace(/\n{3,}/g,'\n\n').trim()+'\n';
-      await addDl(v5Out,SITE_ID+'_NDS_DELTA_V5.txt','NDS Delta V5 Script (Standalone)');
-    }
-
-    // ══ V6 — STANDALONE INDEPENDENT TEMPLATE ══
-    if(sel.v6){
-      var v6out=[];
-      var v6add=function(fdnSuffix,params){
-        v6out.push('set');
-        v6out.push('FDN : "SubNetwork=ONRM_ROOT_MO,MeContext='+SITE_ID+',ManagedElement='+SITE_ID+','+fdnSuffix+'"');
-        Object.keys(params).forEach(function(k){v6out.push(k+' : '+params[k]);});
-        v6out.push('');
-      };
-      var v6addCreate=function(fdnSuffix,params){
-        v6out.push('create');
-        v6out.push('FDN : "SubNetwork=ONRM_ROOT_MO,MeContext='+SITE_ID+',ManagedElement='+SITE_ID+','+fdnSuffix+'"');
-        Object.keys(params).forEach(function(k){v6out.push(k+' : '+params[k]);});
-        v6out.push('');
-      };
-
-      // B14 present check
-      var v6HasB14=!!(secLTE['B14']);
-
-      // SA site with 850/PCS/AWS present (ignore if SA has only n077, no LB/MB)
-      var v6SALbMbCells=[];
-      ['850','PCS','AWS'].forEach(function(band){['ALPHA','BETA','GAMMA'].forEach(function(s){((saSectors[band]||{})[s]||[]).forEach(function(c){v6SALbMbCells.push(c);});});});
-      var v6SAHasLbMb=v6SALbMbCells.length>0;
-
-      // SA site check (any SA sector present)
-      var v6IsSA=Object.keys(saSectors).length>0;
-
-      // ── V6 COMMANDS ──
-
-      // PtmFunction: B14 present → True, B14 absent → False
-      if(v6HasB14){
-        v6add('ENodeBFunction=1,PtmFunction=1',{ptmEnabled:'True'});
-      } else {
-        v6add('ENodeBFunction=1,PtmFunction=1',{ptmEnabled:'False'});
-      }
-
-      // RedCap UeMobilityGroupDefinition: SA + 850/PCS/AWS present
-      if(v6SAHasLbMb){
-        v6addCreate('GNBCUCPFunction=1,UeGroupSelection=1,UeMobilityGroupDefinition=RedCap',{ueMobilityGroupDefinitionId:'RedCap',ueMobilityGroupId:'3',ueMobilityGroupPriority:'10'});
-        v6add('GNBCUCPFunction=1,UeGroupSelection=1,UeMobilityGroupDefinition=RedCap',{selectionCriteria:'"redCapUe==1"'});
-      }
-
-      // CXC4012865, CXC4012872: SA site
-      if(v6IsSA){
-        v6add('SystemFunctions=1,Lm=1,FeatureState=CXC4012865',{featureState:'ACTIVATED'});
-        v6add('SystemFunctions=1,Lm=1,FeatureState=CXC4012872',{featureState:'ACTIVATED'});
-      }
-
-      var v6Out=v6out.join('\n').replace(/\n{3,}/g,'\n\n').trim()+'\n';
-      await addDl(v6Out,SITE_ID+'_NDS_DELTA_V6.txt','NDS Delta V6 Script (Standalone)');
-    }
-
-    // ══ V7 — STANDALONE INDEPENDENT TEMPLATE ══
-    if(sel.v7){
-      var v7out=[];
-      var v7add=function(fdnSuffix,params){
-        v7out.push('set');
-        v7out.push('FDN : "SubNetwork=ONRM_ROOT_MO,MeContext='+SITE_ID+',ManagedElement='+SITE_ID+','+fdnSuffix+'"');
-        Object.keys(params).forEach(function(k){v7out.push(k+' : '+params[k]);});
-        v7out.push('');
-      };
-
-      // B17 sectors (always included regardless of bandwidth - per earlier correction)
-      var v7B17Cells=[];
-      if(secLTE['B17'])['ALPHA','BETA','GAMMA'].forEach(function(s){v7B17Cells=v7B17Cells.concat(allCells('B17',s));});
-      // B2/B4/B66 with 5MHz - independent inclusion
-      var v7_2466_5MHzCells=[];
-      ['B2','B4','B66'].forEach(function(band){if(secLTE[band])['ALPHA','BETA','GAMMA'].forEach(function(s){allCells(band,s).forEach(function(c){if(cellBwMap[c]===5000)v7_2466_5MHzCells.push(c);});});});
-      // B2/B4/B66 with >=10MHz
-      var v7_2466_10Cells=[];
-      ['B2','B4','B66'].forEach(function(band){if(secLTE[band])['ALPHA','BETA','GAMMA'].forEach(function(s){allCells(band,s).forEach(function(c){if(cellBwMap[c]>=10000)v7_2466_10Cells.push(c);});});});
-      // B30 sectors (all cells)
-      var v7B30Cells=[];
-      if(secLTE['B30'])['ALPHA','BETA','GAMMA'].forEach(function(s){v7B30Cells=v7B30Cells.concat(allCells('B30',s));});
-      // All sectors except B29
-      var v7ExclB29Cells=allLTECells.filter(function(c){
-        var isB29=false;
-        if(secLTE['B29'])['ALPHA','BETA','GAMMA'].forEach(function(s){if(allCells('B29',s).indexOf(c)>=0)isB29=true;});
-        return !isB29;
-      });
-
-      // ── V7 COMMANDS ──
-
-      // B17 (always) + B2/B4/B66 5MHz (independent): a2OuterSearchThrRsrpOffset:0
-      v7B17Cells.forEach(function(c){v7add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1,ReportConfigSearch=1',{a2OuterSearchThrRsrpOffset:'0'});});
-      v7_2466_5MHzCells.forEach(function(c){v7add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1,ReportConfigSearch=1',{a2OuterSearchThrRsrpOffset:'0'});});
-
-      // B2/B4/B66 >=10MHz: a2OuterSearchThrRsrpOffset:-6
-      v7_2466_10Cells.forEach(function(c){v7add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1,ReportConfigSearch=1',{a2OuterSearchThrRsrpOffset:'-6'});});
-
-      // B30: a2OuterSearchThrRsrpOffset:-2
-      v7B30Cells.forEach(function(c){v7add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1,ReportConfigSearch=1',{a2OuterSearchThrRsrpOffset:'-2'});});
-
-      // All except B29: ReportConfigSCellA1A2
-      v7ExclB29Cells.forEach(function(c){v7add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1,ReportConfigSCellA1A2=1',{a1a2ThresholdRsrq:'-195',hysteresisA1A2Rsrp:'40',hysteresisA1A2Rsrq:'0',timeToTriggerA2:'1024',triggerQuantityA1A2:'RSRQ'});});
-      // All except B29: ReportConfigSCellA6
-      v7ExclB29Cells.forEach(function(c){v7add('ENodeBFunction=1,EUtranCellFDD='+c+',UeMeasControl=1,ReportConfigSCellA6=1',{timeToTriggerA6:'1024'});});
-
-      // All except B29: loopingEndcProtectionEnabled + restartBufMonAtMobility
-      v7ExclB29Cells.forEach(function(c){v7add('ENodeBFunction=1,EUtranCellFDD='+c,{loopingEndcProtectionEnabled:'True',restartBufMonAtMobility:'True'});});
-
-      // TurboLive SchedulingProfile: non-DAS → RESOURCE_FAIR, DAS → PRIORITIZED_RATE
-      if(!isDAS){
-        v7add('GNBDUFunction=1,UeCC=1,SchedulingProfile=TurboLive',{schedulingAlgorithm:'RESOURCE_FAIR'});
-      } else {
-        v7add('GNBDUFunction=1,UeCC=1,SchedulingProfile=TurboLive',{schedulingAlgorithm:'PRIORITIZED_RATE'});
-      }
-
-      var v7Out=v7out.join('\n').replace(/\n{3,}/g,'\n\n').trim()+'\n';
-      await addDl(v7Out,SITE_ID+'_NDS_DELTA_V7.txt','NDS Delta V7 Script (Standalone)');
-    }
-
-    // ══ V8 — STANDALONE INDEPENDENT TEMPLATE ══
-    if(sel.v8){
-      var v8out=[];
-      var v8add=function(fdnSuffix,params){
-        v8out.push('set');
-        v8out.push('FDN : "SubNetwork=ONRM_ROOT_MO,MeContext='+SITE_ID+',ManagedElement='+SITE_ID+','+fdnSuffix+'"');
-        Object.keys(params).forEach(function(k){v8out.push(k+' : '+params[k]);});
-        v8out.push('');
-      };
-
-      // B29 sectors (all cells)
-      var v8B29Cells=[];
-      if(secLTE['B29'])['ALPHA','BETA','GAMMA'].forEach(function(s){v8B29Cells=v8B29Cells.concat(allCells('B29',s));});
-
-      // All 5G sectors (all bands)
-      var v8AllNRCells=[];
-      Object.keys(g5).forEach(function(band){['ALPHA','BETA','GAMMA'].forEach(function(s){(g5[band][s]||[]).forEach(function(c){v8AllNRCells.push(c);});});});
-
-      // 850/PCS/AWS sectors (NR LB+MB)
-      var v8LbMbCells=[];
-      ['850','PCS','AWS'].forEach(function(band){['ALPHA','BETA','GAMMA'].forEach(function(s){(g5[band]||{})[s]&&g5[band][s].forEach(function(c){v8LbMbCells.push(c);});});});
-
-      // n077 sectors only if site is NSA
-      var v8NsaCBandCells=[];
-      ['ALPHA','BETA','GAMMA'].forEach(function(s){((nsaSectors['n077']||{})[s]||[]).forEach(function(c){v8NsaCBandCells.push(c);});});
-
-      // 850/PCS/AWS sectors only if SA AND RRU contains Radio_4435/AIR4435
-      var v8SA4435Cells=[];
-      ['850','PCS','AWS'].forEach(function(band){['ALPHA','BETA','GAMMA'].forEach(function(s){((saSectors[band]||{})[s]||[]).forEach(function(c){
-        var rru=(nrCellRruMap[c]||'');
-        if(rru.indexOf('Radio_4435')>=0||rru.indexOf('AIR4435')>=0)v8SA4435Cells.push(c);
-      });});});
-
-      // n077 sectors only if site is SA
-      var v8SACBandCells=[];
-      ['ALPHA','BETA','GAMMA'].forEach(function(s){((saSectors['n077']||{})[s]||[]).forEach(function(c){v8SACBandCells.push(c);});});
-
-      // ── V8 COMMANDS ──
-
-      // B29: loopingEndcProtectionEnabled + restartBufMonAtMobility
-      v8B29Cells.forEach(function(c){v8add('ENodeBFunction=1,EUtranCellFDD='+c,{loopingEndcProtectionEnabled:'True',restartBufMonAtMobility:'True'});});
-
-      // All NRCellDU: pdschAllowedInDmrsSym
-      v8AllNRCells.forEach(function(c){v8add('GNBDUFunction=1,NRCellDU='+c,{pdschAllowedInDmrsSym:'true'});});
-
-      // 850/PCS/AWS: pMax:23
-      v8LbMbCells.forEach(function(c){v8add('GNBDUFunction=1,NRCellDU='+c,{pMax:'23'});});
-
-      // n077 NSA only: pMax:26
-      v8NsaCBandCells.forEach(function(c){v8add('GNBDUFunction=1,NRCellDU='+c,{pMax:'26'});});
-
-      // SA + Radio_4435/AIR4435: pMax:26
-      v8SA4435Cells.forEach(function(c){v8add('GNBDUFunction=1,NRCellDU='+c,{pMax:'26'});});
-
-      // n077 SA only: pMax:1000
-      v8SACBandCells.forEach(function(c){v8add('GNBDUFunction=1,NRCellDU='+c,{pMax:'1000'});});
-
-      var v8Out=v8out.join('\n').replace(/\n{3,}/g,'\n\n').trim()+'\n';
-      await addDl(v8Out,SITE_ID+'_NDS_DELTA_V8.txt','NDS Delta V8 Script (Standalone)');
-    }
-
-    // ══ V9_V10 — STANDALONE INDEPENDENT TEMPLATE ══
-    if(sel.v9){
-      var v9out=[];
-      var v9add=function(fdnSuffix,params){
-        v9out.push('set');
-        v9out.push('FDN : "SubNetwork=ONRM_ROOT_MO,MeContext='+SITE_ID+',ManagedElement='+SITE_ID+','+fdnSuffix+'"');
-        Object.keys(params).forEach(function(k){v9out.push(k+' : '+params[k]);});
-        v9out.push('');
-      };
-
-      // 5G presence flags
-      var v9Has5G=Object.keys(g5).length>0;
-      var v9HasN260=!!(g5['N260']||g5['n260']);
-      var v9HasLbMb=!!(g5['850']||g5['PCS']||g5['AWS']);
-      var v9HasCBand=!!(g5['n077']);
-
-      // All SA sectors (any band)
-      var v9SAllCells=[];
-      Object.keys(saSectors).forEach(function(band){['ALPHA','BETA','GAMMA'].forEach(function(s){(saSectors[band][s]||[]).forEach(function(c){v9SAllCells.push(c);});});});
-
-      // n077 cells
-      var v9CBandCells=[];
-      ['ALPHA','BETA','GAMMA'].forEach(function(s){(g5['n077']||{})[s]&&g5['n077'][s].forEach(function(c){v9CBandCells.push(c);});});
-
-      // 850/PCS/AWS cells
-      var v9LbMbCells=[];
-      ['850','PCS','AWS'].forEach(function(band){['ALPHA','BETA','GAMMA'].forEach(function(s){(g5[band]||{})[s]&&g5[band][s].forEach(function(c){v9LbMbCells.push(c);});});});
-
-      // ── V9_V10 COMMANDS ──
-
-      // CXC4012547: ACTIVATED if 5G present and NO N260; DEACTIVATED if N260 present
-      if(v9HasN260){
-        v9add('SystemFunctions=1,Lm=1,FeatureState=CXC4012547',{featureState:'DEACTIVATED'});
-      } else if(v9Has5G){
-        v9add('SystemFunctions=1,Lm=1,FeatureState=CXC4012547',{featureState:'ACTIVATED'});
-      }
-
-      // CXC4012371: ACTIVATED if LB/MB (850/PCS/AWS) present and NO C-Band
-      // DEACTIVATED if C-Band (n077) present (alone or with LB/MB)
-      if(v9HasCBand){
-        v9add('SystemFunctions=1,Lm=1,FeatureState=CXC4012371',{featureState:'DEACTIVATED'});
-      } else if(v9HasLbMb){
-        v9add('SystemFunctions=1,Lm=1,FeatureState=CXC4012371',{featureState:'ACTIVATED'});
-      }
-
-      // n077 pdcchLaSinrOffset:-15
-      v9CBandCells.forEach(function(c){v9add('GNBDUFunction=1,NRCellDU='+c,{pdcchLaSinrOffset:'-15'});});
-
-      // 850/PCS/AWS pdcchLaSinrOffset:-10
-      v9LbMbCells.forEach(function(c){v9add('GNBDUFunction=1,NRCellDU='+c,{pdcchLaSinrOffset:'-10'});});
-
-      // SA sectors McfbCellProfile rsrpCellCandidate
-      v9SAllCells.forEach(function(c){v9add('GNBCUCPFunction=1,Mcfb=1,McfbCellProfile='+c+',McfbCellProfileUeCfg=Base',{rsrpCellCandidate:'{threshold=-129}'});});
-
-      // AIA_B_Premium: if any 5G sectors present
-      if(v9Has5G){
-        v9add('GNBCUCPFunction=1,UeGroupSelection=1,UeServiceGroupDefinition=AIA_B_Premium',{selectionCriteria:'"(rfsp==34||spid==34)&&(5qi==7||qci==7)"'});
-      }
-
-      var v9Out=v9out.join('\n').replace(/\n{3,}/g,'\n\n').trim()+'\n';
-      await addDl(v9Out,SITE_ID+'_NDS_DELTA_V9_V10.txt','NDS Delta V9/V10 Script (Standalone)');
-    }
-
-    // ══ V11 — STANDALONE INDEPENDENT TEMPLATE ══
-    if(sel.v11){
-      var v11out=[];
-      var v11add=function(fdnSuffix,params){
-        v11out.push('set');
-        v11out.push('FDN : "SubNetwork=ONRM_ROOT_MO,MeContext='+SITE_ID+',ManagedElement='+SITE_ID+','+fdnSuffix+'"');
-        Object.keys(params).forEach(function(k){v11out.push(k+' : '+params[k]);});
-        v11out.push('');
-      };
-
-      // n077 cells (C-Band/DoD)
-      var v11CBandCells=[];
-      ['ALPHA','BETA','GAMMA'].forEach(function(s){(g5['n077']||{})[s]&&g5['n077'][s].forEach(function(c){v11CBandCells.push(c);});});
-
-      // 850/PCS/AWS cells (non C-Band)
-      var v11LbMbCells=[];
-      ['850','PCS','AWS'].forEach(function(band){['ALPHA','BETA','GAMMA'].forEach(function(s){(g5[band]||{})[s]&&g5[band][s].forEach(function(c){v11LbMbCells.push(c);});});});
-
-      // SA/NSA overall check
-      var v11IsSA=Object.keys(saSectors).length>0;
-      var v11IsNSA=Object.keys(nsaSectors).length>0;
-
-      // ── V11 COMMANDS ──
-
-      // n077: McpcPSCellProfile rsrpCritical -125
-      v11CBandCells.forEach(function(c){v11add('GNBCUCPFunction=1,Mcpc=1,McpcPSCellProfile='+c+',McpcPSCellProfileUeCfg=Base',{rsrpCritical:'{threshold=-125}'});});
-
-      // 850/PCS/AWS: McpcPSCellProfile rsrpCritical -115
-      v11LbMbCells.forEach(function(c){v11add('GNBCUCPFunction=1,Mcpc=1,McpcPSCellProfile='+c+',McpcPSCellProfileUeCfg=Base',{rsrpCritical:'{threshold=-115}'});});
-
-      // SA: CXC4012591 + CXC4012736 ACTIVATED
-      if(v11IsSA){
-        v11add('SystemFunctions=1,Lm=1,FeatureState=CXC4012591',{featureState:'ACTIVATED'});
-        v11add('SystemFunctions=1,Lm=1,FeatureState=CXC4012736',{featureState:'ACTIVATED'});
-      }
-
-      // NSA: CXC4012736 + CXC4012591 DEACTIVATED
-      if(v11IsNSA){
-        v11add('SystemFunctions=1,Lm=1,FeatureState=CXC4012736',{featureState:'DEACTIVATED'});
-        v11add('SystemFunctions=1,Lm=1,FeatureState=CXC4012591',{featureState:'DEACTIVATED'});
-      }
-
-      var v11Out=v11out.join('\n').replace(/\n{3,}/g,'\n\n').trim()+'\n';
-      await addDl(v11Out,SITE_ID+'_NDS_DELTA_V11.txt','NDS Delta V11 Script (Standalone)');
-    }
 
     var folder=pickedFolderHandle?pickedFolderHandle.name:'Downloads';
     document.getElementById('dlSection').innerHTML='';
-
-    // Generate consolidated file if active
-    if(consolidatedActive&&consolidatedParts.length>0){
-      var consolidated='';
-      consolidatedParts.forEach(function(part){
-        consolidated+='';
-        consolidated+=part.content;
-      });
-      consolidated=consolidated.replace(/\n{3,}/g,'\n\n').trim()+'\n';
-      await addDl(consolidated,SITE_ID+'_consolidated_NDS_Delta.txt','Consolidated NDS Delta');
-    }
 
     alert('\u2705 Scripts generated and saved to "' + folder + '" folder successfully!');
 
