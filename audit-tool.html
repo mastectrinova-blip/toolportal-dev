@@ -1164,13 +1164,13 @@ userLabel : "TurboLive"
  
  
 set
-FDN : "SubNetwork=ONRM_ROOT_MO,MeContext=FSNN010439,ManagedElement=FSNN010439,GNBDUFunction=1,DUQosModifier=1,DUModified5qi=7,DUModified5qiUeCfg=TurboLive"
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBDUFunction=1,DUQosModifier=1,DUModified5qi=7,DUModified5qiUeCfg=TurboLive"
 l4sCfgRef : <empty>
-logicalChannelRef : "SubNetwork=ONRM_ROOT_MO,MeContext=FSNN010439,ManagedElement=FSNN010439,GNBDUFunction=1,UeCC=1,LogicalChannel=Default"
+logicalChannelRef : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBDUFunction=1,UeCC=1,LogicalChannel=Default"
 packetDelayBudget : <empty>
 prefUeGroupList : <empty>
 priorityLevel : 68
-srHandlingRef : "SubNetwork=ONRM_ROOT_MO,MeContext=FSNN010439,ManagedElement=FSNN010439,GNBDUFunction=1,UeCC=1,SrHandling=Default"
+srHandlingRef : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBDUFunction=1,UeCC=1,SrHandling=Default"
 ueConfGroupList : 8
 ueGroupList : <empty>
 userLabel : "TurboLive"
@@ -1227,6 +1227,15 @@ initialUlPrimaryPathMode : SCG
 set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBCUCPFunction=1"
 nasInactivityTime : 5
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012635"
+featureState : DEACTIVATED
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,QciTable=default,QciProfilePredefined=default"
+rohcForUlDataEnabled : True
+
 
 """)
         
@@ -1407,6 +1416,9 @@ set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell},UeMeasControl=1,ReportConfigA5UlTrig=1"
 a5Threshold2Rsrp : -120
 
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell},UeMeasControl=1,ReportConfigB1GUtra=1"
+timeToTriggerB1 : 80
 
 """)
 
@@ -1921,6 +1933,13 @@ set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBCUCPFunction=1,Mcpc=1,McpcPSCellProfile={cell},McpcPSCellProfileUeCfg=Base"
 lowHighFreqPrioClassification : 6
 
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBDUFunction=1,NRCellDU={cell}"
+rimHighIpnThresh : -105
+rimPdschSlotBlankMode : DISABLED
+rimPdschSlotBlankStopThresh : -101
+rimSlopeFrontSymIndex : SS_LAST_UL
+rimSlopePwrDiffThresh : 3
 
 """)
 
