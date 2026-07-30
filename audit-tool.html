@@ -1143,7 +1143,7 @@ featureState : ACTIVATED
 
 create
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBCUCPFunction=1,UeGroupSelection=1,UeMobilityGroupDefinition=FN_SA"
-selectionCriteria : rfsp==1 || rfsp==2
+selectionCriteria : "rfsp==1 || rfsp==2"
 ueMobilityGroupDefinitionId : "FN_SA"
 ueMobilityGroupId : "16"
 ueMobilityGroupPriority : 160
@@ -1212,7 +1212,7 @@ configuredSeverity : CRITICAL
 
 set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBCUCPFunction=1,UeGroupSelection=1,UeServiceGroupDefinition=TurboLive"
-selectionCriteria : (spid==19&&qci==7)||(rfsp==19&&5qi==7)
+selectionCriteria : "(spid==19&&qci==7)||(rfsp==19&&5qi==7)"
 
 set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBDUFunction=1,AdmissionControl=1"
