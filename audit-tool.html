@@ -309,13 +309,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
                 <span class="sc-name">NDS Delta</span>
               </div>
               <div class="fga-gen-opts">
-                <div class="gen-label">Options</div>
-                <div class="gen-btns">
-                  <button class="gen-btn" id="nds-hicap" onclick="toggleNdsOpt(event,'hicap')">HiCap</button>
-                  <button class="gen-btn" id="nds-dss" onclick="toggleNdsOpt(event,'dss')">DSS</button>
-                  <button class="gen-btn" id="nds-idas" onclick="toggleNdsOpt(event,'idas')">iDAS</button>
-                  <button class="gen-btn" id="nds-fnsa" onclick="toggleNdsOpt(event,'fnsa')">FN_SA</button>
-                </div>
+                <div class="gen-label">HiCap / iDAS auto-detected from CIQ</div>
               </div>
             </div>
             <div class="script-card" id="opt-fga" onclick="toggleScript('fga')">
@@ -456,7 +450,6 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
           <div style="display:flex;gap:10px;flex-wrap:wrap">
             <button class="lu-mode-btn active-sd" id="lu-btn-SD" onclick="luSetMode('SHUTTINGDOWN',this)">&#9940; SHUTTINGDOWN</button>
             <button class="lu-mode-btn" id="lu-btn-UL" onclick="luSetMode('UNLOCKED',this)">&#128275; UNLOCKED</button>
-            <button class="lu-mode-btn" id="lu-btn-LK" onclick="luSetMode('LOCKED',this)">&#128274; LOCKED</button>
           </div>
         </div>
       </div>
@@ -466,8 +459,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
         <div class="section-card">
           <div class="section-title"><span class="step-badge">2</span> Cell Filter</div>
           <div style="display:flex;gap:10px;flex-wrap:wrap">
-            <button class="lu-filter-btn active-filter" id="lu-f-EN" onclick="luSetFilter('ENABLED',this)">ENABLED only</button>
-            <button class="lu-filter-btn" id="lu-f-UL" onclick="luSetFilter('UNLOCKED',this)">UNLOCKED only</button>
+            <button class="lu-filter-btn active-filter" id="lu-f-UL" onclick="luSetFilter('UNLOCKED',this)">UNLOCKED only</button>
             <button class="lu-filter-btn" id="lu-f-ALL" onclick="luSetFilter('ALL',this)">ALL cells</button>
           </div>
         </div>
@@ -502,6 +494,15 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
         </div>
         <div id="luSkipped" style="display:none;font-size:11px;color:var(--amber);font-family:var(--mono);margin-bottom:8px;padding:6px 10px;background:var(--amber-light);border-radius:6px;"></div>
         <div id="luOutput" style="background:var(--bg);border:1.5px solid var(--border);border-radius:8px;padding:16px;font-family:var(--mono);font-size:12px;line-height:1.8;max-height:420px;overflow-y:auto;white-space:pre-wrap;"></div>
+
+        <!-- Batch Execute Command Box -->
+        <div id="luBatchBox" style="margin-top:14px;background:var(--bg);border:1.5px solid var(--accent);border-radius:8px;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;">
+          <div>
+            <div style="font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:5px;">Batch Execute Command</div>
+            <code id="luBatchCmd" style="font-family:var(--mono);font-size:13px;color:var(--text);font-weight:600;"></code>
+          </div>
+          <button onclick="luCopyBatch()" style="padding:8px 18px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0;">&#128203; Copy</button>
+        </div>
       </div>
     </div>
 
@@ -762,7 +763,9 @@ voicePrio : 0</script>
 <script id="PY_NDS_CON" type="text/plain">import os
 import pandas as pd
 import re
+from openpyxl import load_workbook
 
+from excel_repair import get_usable_excel_path
 
 def parse_bw(bandwidth):
     try:
@@ -806,75 +809,94 @@ def evaluate_sheet(df, col_name):
 
 def NDS_delta_generator(excel_file,node_options):
 
-    all_site_outputs = {}   # ✅ NEW
-
-    # -----------------------------
-    # Helper Functions (UNCHANGED)
-    # -----------------------------
-    def normalize_id(col):
-        return col.apply(lambda x: str(int(x)) if pd.notna(x) else "")
-
-    def load_excel():
-        mixed = pd.read_excel(excel_file, sheet_name="Mixed Mode Info")
-        fiveg = pd.read_excel(excel_file, sheet_name="5G Info")
-        lte = pd.read_excel(excel_file, sheet_name="eUtran Parameters")
-        enb = pd.read_excel(excel_file, sheet_name="eNB Info")
-        gnb = pd.read_excel(excel_file, sheet_name="gNB Info")
-        la_c = pd.read_excel(excel_file, sheet_name="LTE-NR- FreqRelation")
-        la_n = pd.read_excel(excel_file, sheet_name="Nokia_Relations(LTE-NR)")
-        
-
-        for df in [mixed, fiveg, lte, enb, gnb,la_c,la_n]:
-            df.columns = df.columns.str.strip()
-
-        mixed["eNBId"] = normalize_id(mixed["eNBId"])
-        mixed["gNBId"] = normalize_id(mixed["gNBId"])
-        lte["eNBId"] = normalize_id(lte["eNBId"])
-        fiveg["gNBId"] = normalize_id(fiveg["gNBId"])
-        enb["eNBId"] = normalize_id(enb["eNBId"])
-        gnb["gNBId"] = normalize_id(gnb["gNBId"])
-        la_c["GutranFreqRelationID"] = normalize_id(la_c["GutranFreqRelationID"])
-        la_n["GutranFreqRelationID"] = normalize_id(la_n["GutranFreqRelationID"])
-
-                        # 🔥 FILTER ONLY SA
-        sa = pd.DataFrame()
-        if "NSA/SA" in fiveg.columns:
-            fiveg["NSA/SA"] = fiveg["NSA/SA"].astype(str).str.strip().str.upper()
-            sa = fiveg[fiveg["NSA/SA"] == "SA"]
-
-
-        is_3radio = "RRU Type" in fiveg.columns and fiveg["RRU Type"].astype(str).str.contains(r"AIR6419|AIR6449|AIR6472", case=False, na=False).any()
-
-        is_4890radio = "RRU Type" in lte.columns and lte["RRU type"].astype(str).str.contains(r"4890", case=False, na=False).any()
-
-        
-        dss_clean = fiveg.set_index("NRCellDU")["DSS"].astype(str).str.strip().str.upper()
-        sa_clean = fiveg.set_index("NRCellDU")["NSA/SA"].astype(str).str.strip().str.upper()
-        
-        return mixed, fiveg, lte, enb, gnb, sa, sa_clean, dss_clean, is_3radio, is_4890radio, la_n, la_c
-
-    mixed_df, fiveg_df, lte_df, enb_df, gnb_df, sa_df, sa_clean, dss_clean, is_3radio, is_4890radio, la_n, la_c = load_excel()
-
-
-    hicap = node_options.get("HiCap", False)
-    idas = node_options.get("iDAS", False)
-    node_bands = node_options.get("NODE_BANDS", {})
-    dss = node_options.get("DSS", False)
-    la_n_has, la_n_hb = evaluate_sheet(la_n, "GutranFreqRelationID")
-    la_c_has, la_c_hb = evaluate_sheet(la_c, "GutranFreqRelationID")
-
-    lte_anchor = la_n_has or la_c_has
-
-    lte_anchor_hb = ((la_n_has and la_n_hb) or (la_c_has and la_c_hb))
-
-
-###    # -----------------------------Delta Here-----------------------------
+    usable_excel_path, repaired_excel_temp = get_usable_excel_path(excel_file)
     
-    def delta_script(siteid):
-        script = []
+    try:
 
-        if not b14_df.empty:
-            script.append(f"""set
+        all_site_outputs = {}   # ✅ NEW
+        
+
+        # -----------------------------
+        # Helper Functions (UNCHANGED)
+        # -----------------------------
+        def normalize_id(col):
+            return col.apply(lambda x: str(int(x)) if pd.notna(x) else "")
+
+        def load_excel():
+            sheets = pd.read_excel(
+                usable_excel_path,
+                sheet_name=[
+                    "Mixed Mode Info",
+                    "5G Info",
+                    "eUtran Parameters",
+                    "eNB Info",
+                    "gNB Info",
+                    "LTE-NR- FreqRelation",
+                    "Nokia_Relations(LTE-NR)"
+                ],
+                engine="openpyxl"
+            )
+
+            mixed = sheets["Mixed Mode Info"]
+            fiveg = sheets["5G Info"]
+            lte = sheets["eUtran Parameters"]
+            enb = sheets["eNB Info"]
+            gnb = sheets["gNB Info"]
+            la_c = sheets["LTE-NR- FreqRelation"]
+            la_n = sheets["Nokia_Relations(LTE-NR)"]
+
+
+
+            for df in [mixed, fiveg, lte, enb, gnb,la_c,la_n]:
+                df.columns = df.columns.str.strip()
+
+            mixed["eNBId"] = normalize_id(mixed["eNBId"])
+            mixed["gNBId"] = normalize_id(mixed["gNBId"])
+            lte["eNBId"] = normalize_id(lte["eNBId"])
+            fiveg["gNBId"] = normalize_id(fiveg["gNBId"])
+            enb["eNBId"] = normalize_id(enb["eNBId"])
+            gnb["gNBId"] = normalize_id(gnb["gNBId"])
+            la_c["GutranFreqRelationID"] = normalize_id(la_c["GutranFreqRelationID"])
+            la_n["GutranFreqRelationID"] = normalize_id(la_n["GutranFreqRelationID"])
+
+                            # 🔥 FILTER ONLY SA
+            sa = pd.DataFrame()
+            if "NSA/SA" in fiveg.columns:
+                fiveg["NSA/SA"] = fiveg["NSA/SA"].astype(str).str.strip().str.upper()
+                sa = fiveg[fiveg["NSA/SA"] == "SA"]
+
+
+            is_3radio = "RRU Type" in fiveg.columns and fiveg["RRU Type"].astype(str).str.contains(r"AIR6419|AIR6449|AIR6472", case=False, na=False).any()
+
+            is_4890radio = "RRU Type" in lte.columns and lte["RRU type"].astype(str).str.contains(r"4890", case=False, na=False).any()
+
+            
+            sa_clean = fiveg.set_index("NRCellDU")["NSA/SA"].astype(str).str.strip().str.upper()
+            
+            return  mixed, fiveg, lte, enb, gnb, sa, sa_clean, is_3radio, is_4890radio, la_n, la_c
+
+        mixed_df, fiveg_df, lte_df, enb_df, gnb_df, sa_df, sa_clean, is_3radio, is_4890radio, la_n, la_c = load_excel()
+
+
+
+        # idas = node_options.get("iDAS", False)
+        # node_bands = node_options.get("NODE_BANDS", {})
+        
+        la_n_has, la_n_hb = evaluate_sheet(la_n, "GutranFreqRelationID")
+        la_c_has, la_c_hb = evaluate_sheet(la_c, "GutranFreqRelationID")
+
+        lte_anchor = la_n_has or la_c_has
+
+        lte_anchor_hb = ((la_n_has and la_n_hb) or (la_c_has and la_c_hb))
+
+
+    ###    # -----------------------------Delta Here-----------------------------
+        
+        def delta_script(siteid):
+            script = []
+
+            if not b14_df.empty:
+                script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4011557"
 featureState : ACTIVATED
 
@@ -894,10 +916,14 @@ lbAtoThresholdLevel2 : 55
 ulAdmDifferentiationThr : 949
 diffAdmCtrlFilteringEnabled : true
 
+create
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,SubscriberGroupProfile=1"
+cellTriggerList : {{B14 CID}}
+
 """)
 
-        else:
-            script.append(f"""set
+            else:
+                script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4011557"
 featureState : DEACTIVATED
 
@@ -916,28 +942,25 @@ lbAtoThresholdLevel2 : 45
 ulAdmDifferentiationThr : 900
 diffAdmCtrlFilteringEnabled : false
 
-create
-FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,SubscriberGroupProfile=1"
-cellTriggerList : {{B14 CID}}
 
 
 """)
 
-        if not b29_df.empty:
-            script.append(f"""set
+            if not b29_df.empty:
+                script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4011567"
 featureState : ACTIVATED
 
 """)
-        else:
-            script.append(f"""set
+            else:
+                script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4011567"
 featureState : DEACTIVATED
 
 """)
 
-        if not is_sa:
-            script.append(f"""set
+            if not is_sa:
+                script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012713"
 featureState : DEACTIVATED
 
@@ -951,8 +974,8 @@ featureState : DEACTIVATED
 
 
 """)
-        else:
-            script.append(f"""set
+            else:
+                script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012713"
 featureState : ACTIVATED
 
@@ -966,20 +989,20 @@ featureState : ACTIVATED
 
 
 """)
-        if ((not is_sa) or (is_sa and (has_n77 or dss))):
-            script.append(f"""set
+            if ((not is_sa) or (is_sa and (has_n77))):
+                script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012775"
 featureState : DEACTIVATED
 
 """)
-        if has_hb:
-            script.append(f"""set
+            if has_hb:
+                script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012659"
 featureState : DEACTIVATED
 
 """)
-        else:
-            script.append(f"""set
+            else:
+                script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012659"
 featureState : ACTIVATED
 
@@ -988,93 +1011,93 @@ FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBCUC
 selectionCriteria : "(rfsp==34||spid==34)&&(5qi==7||qci==7)"
 
 """)
-        if not has_hb and not hicap:
-            script.append(f"""set
+            if not has_hb and not hicap:
+                script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012547"
 featureState : ACTIVATED
 
 """)
 
-        else:
-            script.append(f"""set
+            else:
+                script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012547"
 featureState : DEACTIVATED
 
 """)
 
-        if lte_anchor_hb or not site_n77.empty or not has_nr:
-            script.append(f"""set
+            if lte_anchor_hb or not site_n77.empty or not has_nr:
+                script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012371"
 featureState : DEACTIVATED
 
 """)
-        elif lte_anchor:
-            script.append(f"""set
+            elif lte_anchor:
+                script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012371"
 featureState : ACTIVATED
 
 """)
 
-        if not idas:
-            script.append(f"""set
+            if not isdas:
+                script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBDUFunction=1,UeCC=1,SchedulingProfile=TurboLive"
 schedulingAlgorithm : RESOURCE_FAIR
 
 set
-FDN : "SubNetwork=ONRM_ROOT_MO,MeContext=xx5GSiteIdxx,ManagedElement=xx5GSiteIdxx,GNBDUFunction=1,UeCC=1,SchedulingProfile=TurboLive"
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBDUFunction=1,UeCC=1,SchedulingProfile=TurboLive"
 relativePriority : 64
 
 """)
-        elif not has_hb and idas:
-            script.append(f"""set
+            elif not has_hb and isdas:
+                script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBDUFunction=1,UeCC=1,SchedulingProfile=TurboLive"
 schedulingAlgorithm : PRIORITIZED_RATE
 
 """)
             
-        script.append(f"""set
+            script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,PtmFunction=1"
 ptmEnabled : {"True" if b14 else "False"}
 
 """)
 
-        if is_sa and not site_non_n77.empty:
-            script.append(f"""set
+            if is_sa and not site_non_n77.empty:
+                script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBCUCPFunction=1,UeGroupSelection=1,UeMobilityGroupDefinition=RedCap"
 selectionCriteria : "redCapUe==1"
 
 """)
 
-        script.append(f"""set
+            script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBDUFunction=1,AdmissionControl=1,CallQueuing=1,CallQueuingProfile=Default"
 queueRrcRequestMode : {"PRIORITIZED_ONLY" if is_sa else "DISABLED"}
 
 
 """)
-        if is_sa:
-            script.append(f"""set
+            if is_sa:
+                script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012856"
 featureState : ACTIVATED
 
 """)
 
-        if not hicap:
-            script.append(f"""set
+            if not hicap:
+                script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4011255"
 featureState : ACTIVATED
 
 """)
 
-        if not lte_anchor_hb:
-            script.append(f"""set
+            if not lte_anchor_hb:
+                script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,CarrierAggregationFunction=1"
 dcSCellActDeactDataThres : 30
 dcSCellActDeactDataThresHyst : 30
 dcSCellDeactDelayTimer : 200
 
 """)
-        elif lte_anchor_hb or not has_nr:
-            script.append(f"""set
+            elif lte_anchor_hb or not has_nr:
+                script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,CarrierAggregationFunction=1"
 dcSCellActDeactDataThres : 100
 dcSCellActDeactDataThresHyst : 90
@@ -1082,8 +1105,8 @@ dcSCellDeactDelayTimer : 50
 
 """)
 
-        if  lb_cells:
-            script.append(f"""set
+            if  lb_cells:
+                script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012704"
 featureState : ACTIVATED
 
@@ -1091,7 +1114,7 @@ featureState : ACTIVATED
 
 
 
-        script.append(f"""create
+            script.append(f"""create
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBCUCPFunction=1,UeGroupSelection=1,UeServiceGroupDefinition=TurboLive"
 ueServiceGroupId : "8"
 ueServiceGroupPriority : 80
@@ -1198,14 +1221,17 @@ admissionPrioThreshold : 1
 rrcHighPriorityAccessPrio : 12
 
 set
-FDN : "SubNetwork=ONRM_ROOT_MO,MeContext=xx5GSiteIdxx,ManagedElement=xx5GSiteIdxx,GNBCUCPFunction=1,UeCC=1,UlDataSplit=Default_endc,UlDataSplitUeCfg=Base"
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBCUCPFunction=1,UeCC=1,UlDataSplit=Default_endc,UlDataSplitUeCfg=Base"
 initialUlPrimaryPathMode : SCG
 
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBCUCPFunction=1"
+nasInactivityTime : 5
 
 """)
         
-        if is_catm_node:
-            script.append(f"""set
+            if is_catm_node:
+                script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,Paging=1"
 pagingAssistDataSupportBr : ASSISTANCE_DATA_CELL_ID
 
@@ -1252,8 +1278,8 @@ raiReleaseDelayTimerBr : 5
 """)
             
 
-        if is_3radio:
-            script.append(f"""set
+            if is_3radio:
+                script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012816"
 featureState : ACTIVATED
 
@@ -1268,15 +1294,15 @@ uplinkCompUeEnabled : True
 
 """)
 
-        if has_lte:
-            script.append(f"""set
+            if has_lte:
+                script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},NodeSupport=1,LicenseSupport=1,NetworkLicensing=1"
 euft : <empty>
 
 """)
 
-        if is_sa and not has_hb:
-            script.append(f"""set
+            if is_sa and not has_hb:
+                script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012865"
 featureState : ACTIVATED
 
@@ -1287,29 +1313,29 @@ featureState : ACTIVATED
 """)
 
 
-        if is_4890radio:
-            script.append(f"""set
+            if is_4890radio:
+                script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4011254"
 featureState : ACTIVATED
 
 """)
 
-        if not isdas and not iscran:
-            script.append(f"""set
+            if not isdas and not iscran:
+                script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4011808"
 featureState : ACTIVATED
 
 """)
 
-        if not b30_df.empty:
-            script.append(f"""set
+            if b30_df.empty:
+                script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4010955"
 featureState : DEACTIVATED
 
 """)
 
-        if not multiple_nr_bands:
-            script.append(f"""set
+            if not multiple_nr_bands:
+                script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBCUCPFunction=1,TrafficSteering=1,TrStPSCellProfile=Default,TrStPSCellProfileUeCfg=Base"
 hiPrioDetMeasurementTime : 5000
 hiPrioDetStartTime : 2000
@@ -1317,9 +1343,39 @@ rsrpCandidateA5 : {{threshold2=-156}}
 
 set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBCUCPFunction=1,UeMC=1,UeMCNrFreqRelProfile=Default,UeMCNrFreqRelProfileUeCfg=Base"
+connModePrioPSCell : 7
+
 
 """)
 
+
+            if is_idle:
+                script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4011983"
+featureState : DEACTIVATED
+ 
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012034"
+featureState : ACTIVATED
+ 
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012241"
+featureState : ACTIVATED
+
+""")
+
+            if lte_anchor:
+                script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012218"
+featureState : ACTIVATED
+
+""")
+            else:
+                script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012218"
+featureState : DEACTIVATED
+
+""")
 
 
 
@@ -1328,22 +1384,22 @@ FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBCUC
         
 
 
-        for _,r in site_lte_df.iterrows():
-            cell = r.get("EutranCellFDDId")
-            band = r.get("eUTRA operating band")
-            bw = r.get("dlChannelBandwidth")
-            p_bw = parse_bw(bw)
+            for _,r in site_lte_df.iterrows():
+                cell = r.get("EutranCellFDDId")
+                band = r.get("eUTRA operating band")
+                bw = r.get("dlChannelBandwidth")
+                p_bw = parse_bw(bw)
 
-            pcell_band = cell_band.get(cell)
-            allowed_scells = pcell_scell_map.get(pcell_band, [])
+                pcell_band = cell_band.get(cell)
+                allowed_scells = pcell_scell_map.get(pcell_band, [])
 
-            site_bands = set(cell_band.values())
+                site_bands = set(cell_band.values())
 
-# Count only unique allowed SCell bands
-            scell_count = len(site_bands.intersection(allowed_scells))
-            # print(cell,scell_count,site_bands)
+    # Count only unique allowed SCell bands
+                scell_count = len(site_bands.intersection(allowed_scells))
+                # print(cell,scell_count,site_bands)
 
-            script.append(f"""set
+                script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell},UeMeasControl=1,ReportConfigA5InterFreqHigherPrio=1"
 timeToTriggerA5 : 320
 
@@ -1355,8 +1411,8 @@ a5Threshold2Rsrp : -120
 """)
 
 
-            if (has_nr and has_lte) and ("ARL" not in cell or "OKL" not in cell):
-                script.append(f"""set
+                if (has_nr and has_lte) and ("ARL" not in cell or "OKL" not in cell):
+                    script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell}"
 endcSetupUlBsVolThr : 10000
 
@@ -1365,8 +1421,8 @@ FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeB
 endcSetupDlBsVolThr : 50
 
 """)
-            if not has_nr:
-                script.append(f"""set
+                if not has_nr:
+                    script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell}"
 endcSetupUlBsVolThr : 0
 
@@ -1382,8 +1438,8 @@ endcSetupDlBsVolThr : 50
 
 """)
 
-            if cell in catm_cells:
-                script.append(f"""set
+                if cell in catm_cells:
+                    script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell}"
 catm1SupportEnabled : true
 eDrxAllowed : true
@@ -1400,8 +1456,8 @@ FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeB
 ueMeasurementsActiveBr : true
 
 """)
-            else:
-                script.append(f"""set
+                else:
+                    script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell}"
 catm1SupportEnabled : false
 eDrxAllowed : false
@@ -1415,26 +1471,26 @@ drxActiveBr : CE_LEVEL_0
 
 
 """)
-            if (cell in mb_cells or (cell in b5_cells and b17)) and p_bw >=10000:
-                script.append(f"""set
+                if (cell in mb5_cells or (cell in b5_cells and b17)) and p_bw >=10000:
+                    script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell},UeMeasControl=1,ReportConfigSearch=1"
 a2OuterSearchThrRsrpOffset : -6
 
 """)
-            elif cell in b30_cells:
-                script.append(f"""set
+                elif cell in b30_cells:
+                    script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell},UeMeasControl=1,ReportConfigSearch=1"
 a2OuterSearchThrRsrpOffset : -2
 
 """)
-            else:
-                script.append(f"""set
+                else:
+                    script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell},UeMeasControl=1,ReportConfigSearch=1"
 a2OuterSearchThrRsrpOffset : 0
 
 """)
-            if scell_count > 1 and cell not in b29_cells:
-                script.append(f"""set
+                if scell_count > 1 and cell not in b29_cells:
+                    script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell},UeMeasControl=1,ReportConfigSCellA1A2=1"
 a1a2ThresholdRsrq : -195
 hysteresisA1A2Rsrp : 40
@@ -1451,15 +1507,15 @@ FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeB
 ulHeavyUeDetectEnabled : true
 
 """)
-            else:
-                script.append(f"""set
+                else:
+                    script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell}"
 ulHeavyUeDetectEnabled : false
 
 """)
             
-            if cell in lb_cells:
-                script.append(f"""set
+                if cell in lb_cells:
+                    script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell},UeMeasControl=1,ReportConfigA5Spifho=1"
 a5Threshold2Rsrp : -115
 a5Threshold2Rsrq : -150
@@ -1476,8 +1532,8 @@ a5Threshold2Rsrq : -150
 
 
 """)
-            elif cell in b14_cells:
-                script.append(f"""set
+                elif cell in b14_cells:
+                    script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell},UeMeasControl=1,ReportConfigA5Spifho=1"
 a5Threshold2Rsrp : -116
 a5Threshold2Rsrq : -160
@@ -1498,8 +1554,8 @@ a3RsrqOffset : -60
 
 
 """)
-            else:
-                script.append(f"""set
+                else:
+                    script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell},UeMeasControl=1,ReportConfigA5Spifho=1"
 a5Threshold2Rsrp : -110
 a5Threshold2Rsrq : -150
@@ -1516,8 +1572,8 @@ a5Threshold2Rsrq : -195
 
 """)
 
-            if cell in lb_cells or (cell in b5_cells and not b17) or (cell in mb_cells and p_bw <10000):
-                script.append(f"""set
+                if cell in lb_cells or (cell in b5_cells and not b17) or (cell in mb5_cells and p_bw <10000):
+                    script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell},UeMeasControl=1,ReportConfigSearch=1"
 a1a2SearchThresholdRsrq : -170
 
@@ -1527,25 +1583,25 @@ a3RsrqOffset : -10
 
 
 """)
-            elif (cell in mb_cells or (cell in b5_cells and b17) and p_bw >=10000) or cell in b30_cells:
-                script.append(f"""set
+                elif (cell in mb5_cells or (cell in b5_cells and b17) and p_bw >=10000) or cell in b30_cells:
+                    script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell},UeMeasControl=1,ReportConfigSearch=1"
 a1a2SearchThresholdRsrq : -185
 
 set
-FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD=xxEutranCellFDDIdxx,UeMeasControl=1,ReportConfigEUtraIFBestCell=1"
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell},UeMeasControl=1,ReportConfigEUtraIFBestCell=1"
 a3RsrqOffset : -30
 
 """)
-            else:
-                script.append(f"""set
+                else:
+                    script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell},UeMeasControl=1,ReportConfigSearch=1"
 a1a2SearchThresholdRsrq : -150
 
 """)
 
-            if cell in b29_cells:
-                script.append(f"""set
+                if cell in b29_cells:
+                    script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell},UeMeasControl=1,ReportConfigA5EndcHo=1"
 reportAmountA5 : 0
 
@@ -1575,80 +1631,67 @@ FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeB
 a3RsrqOffset : 0
 
 """)
-            else:
-                script.append(f"""set
+                else:
+                    script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell},UeMeasControl=1"
 bothInterA3RsrpRsrqCheck : True
 
 """)
 
 
-            if cell in lb_cells and cell in b14_cells and cell in b29_cells:
-                script.append(f"""set
+                if cell in lb_cells and cell in b14_cells and cell in b29_cells:
+                    script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell}"
 systemInformationBlock3 : {{sNonIntraSearchQ=0,threshServingLowQ=1000}}
 
 """)
 
-            elif (cell in mb_cells or (cell in b5_cells and b17) and p_bw >=10000) or cell in b30_cells:
-                script.append(f"""set
+                elif ((cell in mb5_cells or (cell in b5_cells and b17)) and p_bw >=10000) or cell in b30_cells:
+                    script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell}"
 systemInformationBlock3 : {{sNonIntraSearchQ=12,threshServingLowQ=12}}
 
 """)
 
-            elif cell in mb_cells and p_bw <10000:
-                script.append(f"""set
+                elif cell in mb5_cells and p_bw <10000:
+                    script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell}"
 systemInformationBlock3 : {{sNonIntraSearchQ=17,threshServingLowQ=17}}
 
 
 """)
 
-                
-
-
-
-
-
-
-
-
-
-
-
-
-            if cell in mb_cells and p_bw <10000:
-                script.append(f"""set
+                if cell in mb5_cells and p_bw <10000:
+                    script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell},UeMeasControl=1,ReportConfigSearch=1"
 a2OuterSearchThrRsrqOffset : -20
 
 """)
 
-            elif cell in b17_cells or cell in b14_cells or cell in b29_cells:
-                script.append(f"""set
+                elif cell in b17_cells or cell in b14_cells or cell in b29_cells:
+                    script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell},UeMeasControl=1,ReportConfigSearch=1"
 a2OuterSearchThrRsrqOffset : 0
 
 """)
-            else:
-                script.append(f"""set
+                else:
+                    script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell},UeMeasControl=1,ReportConfigSearch=1"
 a2OuterSearchThrRsrqOffset : -10
 
 """)
 
-            if cell in mb_cells and p_bw <10000:
-                script.append(f"""set
+                if cell in mb5_cells and p_bw <10000:
+                    script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell},UeMeasControl=1,ReportConfigEUtraIFBestCell=1"
 a3RsrqOffset : -10
 
 """)
             
 
-            if cell in b30_cells:
-                if "10000/6400" in bw:
-                    script.append(f"""set
+                if cell in b30_cells:
+                    if "10000/6400" in str(bw):
+                        script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell}"
 ailgRef : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,AirIfLoadProfile=WCS_Slim"
 dlCchAndRefSigBlockActive : True
@@ -1658,8 +1701,8 @@ dlFrequencyAllocationProportion : 64
 dlInterferenceManagementActive : False
 
 """)
-                else:
-                    script.append(f"""set
+                    else:
+                        script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell}"
 ailgRef : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,AirIfLoadProfile=4"
 dlCchAndRefSigBlockActive : false
@@ -1670,7 +1713,7 @@ dlInterferenceManagementActive : true
 
 """)
 
-            script.append(f"""set
+                script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell}"
 interFreqHoHigherPrioEndc : {"True" if cell in lb_cells else "False"}
 interFreqHoHigherPrioSnRel : {"True" if cell in lb_cells else "False"}
@@ -1682,14 +1725,14 @@ reportIntervalB1 : {"MS_480" if lte_anchor else "MS_120"}
 
 """)
 
-            if cell in b17_cells or cell in b29_cells:
-                script.append(f"""set
+                if cell in b17_cells or cell in b29_cells:
+                    script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell},UeMeasControl=1,ReportConfigSearch=1"
 inhibitA2SearchConfig : INHIBIT_A2SEARCH_RSRP
 
 """)
-            elif cell in b14_cells:
-                script.append(f"""set
+                elif cell in b14_cells:
+                    script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell},UeMeasControl=1,ReportConfigSearch=1"
 inhibitA2SearchConfig : INHIBIT_A2SEARCH_RSRQ
 
@@ -1703,15 +1746,15 @@ a1a2SearchThresholdRsrp : -85
 
 """)
 
-            else:
-                script.append(f"""set
+                else:
+                    script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell},UeMeasControl=1,ReportConfigSearch=1"
 inhibitA2SearchConfig : NOT_INHIBIT
 
 """)
 
-            if cell in b14_cells:
-                script.append(f"""set
+                if cell in b14_cells:
+                    script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell},UeMeasControl=1,ReportConfigSearch=1"
 a1a2SearchThresholdRsrp : -85
 
@@ -1722,56 +1765,69 @@ a5Threshold2Rsrp : -112
 
 
 """)
-            elif cell in b30_cells:
-                script.append(f"""set
+                elif cell in b30_cells:
+                    script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell},UeMeasControl=1,ReportConfigSearch=1"
 a1a2SearchThresholdRsrp : -124
 
 """)
-            else:
-                script.append(f"""set
+                else:
+                    script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell},UeMeasControl=1,ReportConfigSearch=1"
 a1a2SearchThresholdRsrp : -118
 
 """)
 
-            if cell in sleep_cells:
-                script.append(f"""set
+                if cell in sleep_cells:
+                    script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell},CellSleepFunction=1"
 sleepStartTime : "02:00"
 
 """)
 
-            if cell in b14_cells or cell in b17_cells:
-                value = "ON" if cell in primary_upper_on_cells else "OFF"
-                script.append(f"""set
+                if cell in b14_cells or cell in b17_cells:
+                    value = "ON" if cell in primary_upper_on_cells else "OFF"
+                    script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell}"
 primaryUpperLayerInd : {value}
 
 """)
                 
-            if isdas or hicap:
-                script.append(f"""set
+                if isdas or hicap:
+                    script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell}"
 interFreqHoHigherPrioEnabled : False
 
 """)
 
-            elif cell in lb_cells and mb_usid:
-                script.append(f"""set
+                elif cell in lb_cells and mb_usid:
+                    script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell}"
 interFreqHoHigherPrioEnabled : True
 
 """)
 
-            else:
-                script.append(f"""set
+                else:
+                    script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell}"
 interFreqHoHigherPrioEnabled : False
 
 """)
 
 
+                if cell in b14_cells or cell in lb_cells or cell in b29_cells or ((cell in mb5_cells or cell in b30_cells) and not lb_usid):
+                    script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext=AZPN096039,ManagedElement=AZPN096039,ENodeBFunction=1,EUtranCellFDD={cell},UeMeasControl=1,ReportConfigSearch=1"
+a2CriticalThresholdRsrp : -126
+
+
+""")
+                elif ((cell in mb5_cells or cell in b30_cells) and lb_usid):
+                    script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext=AZPN096039,ManagedElement=AZPN096039,ENodeBFunction=1,EUtranCellFDD={cell},UeMeasControl=1,ReportConfigSearch=1"
+a2CriticalThresholdRsrp : -130
+
+""")
 
 
 
@@ -1785,24 +1841,23 @@ interFreqHoHigherPrioEnabled : False
 
 
 
-
-# 5G cell loop
-
+    # 5G cell loop
 
 
-        for _,r in site_fg_df.iterrows():
-            cell = r.get("NRCellDU")
-            rru_type = str(r.get("RRU Type"))
-            sa_type = str(r.get("NSA/SA")).strip().upper()
-            bw = r.get("bSChannelBwDL")
-            if cell in site_n77["NRCellDU"].values:
-                script.append(f"""set
+
+            for _,r in site_fg_df.iterrows():
+                cell = r.get("NRCellDU")
+                rru_type = str(r.get("RRU Type"))
+                sa_type = str(r.get("NSA/SA")).strip().upper()
+                bw = r.get("bSChannelBwDL")
+                if cell in site_n77["NRCellDU"].values:
+                    script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBCUCPFunction=1,Mcpc=1,McpcPSCellProfile={cell},McpcPSCellProfileUeCfg=Base"
 rsrpCritical : {{threshold=-125}}
 
 """)
-                if multiple_nr_bands:
-                    script.append(f"""set
+                    if multiple_nr_bands:
+                        script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBCUCPFunction=1,NRCellCU={cell}"
 hiPrioDetEnabled : False
 
@@ -1812,8 +1867,8 @@ pdcchSymbConfig : ADAPT_MAX_2
 
 """)
 
-                if is_3radio:
-                    script.append(f"""set 
+                    if is_3radio:
+                        script.append(f"""set 
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBDUFunction=1,NRCellDU={cell}"
 csiRsConfig32P : {{csiRsControl32Ports=EIGHT_TWO_N1AZ,i11Restriction="FFFFFFFF",i12Restriction="FF"}}
 dlMaxMuMimoLayers : 8
@@ -1830,35 +1885,35 @@ pdcchCapacityBoostEnabled : true
 
 
                 
-            if cell in site_non_n77["NRCellDU"].values:
-                script.append(f"""set
+                if cell in site_non_n77["NRCellDU"].values:
+                    script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBCUCPFunction=1,Mcpc=1,McpcPSCellProfile={cell},McpcPSCellProfileUeCfg=Base"
 rsrpCritical : {{threshold=-115}}
 
 """)
 
 
-            if hicap:
-                script.append(f"""set
+                if hicap:
+                    script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBDUFunction=1,NRCellDU={cell}"
 pdcchLaSinrOffset : -8
 
 """)
-            elif cell in site_n77["NRCellDU"].values:
-                script.append(f"""set
+                elif cell in site_n77["NRCellDU"].values:
+                    script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBDUFunction=1,NRCellDU={cell}"
 pdcchLaSinrOffset : -15
 
 """)
-            if cell in site_non_n77["NRCellDU"].values:
-                script.append(f"""set
+                if cell in site_non_n77["NRCellDU"].values:
+                    script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBDUFunction=1,NRCellDU={cell}"
 pdcchLaSinrOffset : -10
 
 """)
                 
             
-            script.append(f"""set
+                script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBDUFunction=1,NRCellDU={cell}"
 pdschAllowedInDmrsSym : true
 
@@ -1869,34 +1924,34 @@ lowHighFreqPrioClassification : 6
 
 """)
 
-            if cell in site_non_n77["NRCellDU"].values:
-                script.append(f"""set
+                if cell in site_non_n77["NRCellDU"].values:
+                    script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBDUFunction=1,NRCellDU={cell}"
 pMax : 23
 
 """)
-            if sa_type == "NSA" and cell in site_n77["NRCellDU"].values:
-                script.append(f"""set
+                if sa_type == "NSA" and cell in site_n77["NRCellDU"].values:
+                    script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBDUFunction=1,NRCellDU={cell}"
 pMax : 26
 
 """)
-            if sa_type == "SA" and re.search(r"4435", rru_type, re.IGNORECASE):
-                script.append(f"""set
+                if sa_type == "SA" and re.search(r"4435", rru_type, re.IGNORECASE):
+                    script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBDUFunction=1,NRCellDU={cell}"
 pMax : 26
 
 
 """)
-            if sa_type == "SA" and cell in site_n77["NRCellDU"].values and not re.search(r"4435", rru_type, re.IGNORECASE):
-                script.append(f"""set
+                if sa_type == "SA" and cell in site_n77["NRCellDU"].values and not re.search(r"4435", rru_type, re.IGNORECASE):
+                    script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBDUFunction=1,NRCellDU={cell}"
 pMax : 1000
 
 """)
             
-            if cell in site_non_n77["NRCellDU"].values:
-                script.append(f"""set
+                if cell in site_non_n77["NRCellDU"].values:
+                    script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBCUCPFunction=1,NRCellCU={cell}"
 sNonIntraSearchQ : {"1" if sa_type == "SA" else "2"}
 
@@ -1910,8 +1965,8 @@ rsrpSearchZone : {{threshold=-113}}
 
 
 """)
-                if sa_type == "SA":
-                    script.append(f"""set
+                    if sa_type == "SA":
+                        script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBCUCPFunction=1,TrafficSteering=1,TrStSaCellProfile={cell},TrStSaCellProfileUeCfg=RedCap"
 criterionBetterUeConfig : 10
 
@@ -1966,17 +2021,23 @@ FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBCUC
 rsrpCellCandidate : {{threshold=-129}}
 
 """)
-                else:
-                    script.append(f"""set
+                    else:
+                        script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBCUCPFunction=1,Mcfb=1,McfbCellProfile={cell},McfbCellProfileUeCfg=Base"
 rsrpCellCandidate : {{threshold=-140}}
 
 """)
 
 
-            if cell in site_n77["NRCellDU"].values:
-                if sa_type == "SA":
+                if cell in site_n77["NRCellDU"].values:
                     script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBCUCPFunction=1,Mcfb=1,McfbCellProfile={cell},McfbCellProfileUeCfg=Base"
+rsrpCellCandidate : {{threshold={-129 if sa_type else -140}}}
+
+
+""")
+                    if sa_type == "SA":
+                        script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBCUCPFunction=1,TrafficSteering=1,TrStSaCellProfile={cell},TrStSaCellProfileUeCfg=FN_SA"
 aggregatedBwThreshold : 10
 bwTrigISHoEnabled : False
@@ -1996,455 +2057,592 @@ mlcEnabled : {"True" if bw<= 30 else "False"}
 
 
 
-        return script
+            return script
 
 
 
-###   # -----------------------------end-------------------------------------
+    ###   # -----------------------------end-------------------------------------
 
 
 
-        # ------------------------------------------------------------------------------------------------
-        # MAIN LOOP
-        # ------------------------------------------------------------------------------------------------
+            # ------------------------------------------------------------------------------------------------
+            # MAIN LOOP
+            # ------------------------------------------------------------------------------------------------
 
-    isdas = "DAS" in str(enb_df["Structure Type"].iloc[0]).upper()
-    
-    for _, row in mixed_df.iterrows():
-
-        siteid = row.get("Node to be built as")
-
-        fn_sa = (node_bands.get(str(siteid), {}).get("FN_SA", False))
-        eNBId = row.get("eNBId")
-        gNBId = row.get("gNBId")
-
-        G2_suffixes = ("5216", "6630")
-        G3_suffixes = ("6651", "6648", "6339", "6337", "6507")
-        g2_pattern = "|".join(G2_suffixes)
-        g3_pattern = "|".join(G3_suffixes)
-
-        site_enb_df = enb_df[enb_df["eNBId"] == eNBId]
-        site_gnb_df = gnb_df[gnb_df["gNBId"] == gNBId]
-
-
-        is_lte_g2 = (site_enb_df["DU type"].astype(str).str.contains(g2_pattern, na=False).any())
-        is_lte_g3 = (site_enb_df["DU type"].astype(str).str.contains(g3_pattern, na=False).any())
-
-        is_fg_g2 = (site_gnb_df["DU type"].astype(str).str.contains(g2_pattern, na=False).any())
-        is_fg_g3 = (site_gnb_df["DU type"].astype(str).str.contains(g3_pattern, na=False).any())
-
-
+        isdas = "DAS" in str(enb_df["Structure Type"].iloc[0]).upper()
         
-        if pd.isna(siteid):
-            continue
+        for _, row in mixed_df.iterrows():
 
-        site_output_lines = []
+            siteid = row.get("Node to be built as")
+            is_idle = str(row["IDLA"]).strip().upper() not in ["", "N/A", "NA", "NO", "NONE", "NAN"]
+            # fn_sa = (node_bands.get(str(siteid), {}).get("FN_SA", False))
+            eNBId = row.get("eNBId")
+            gNBId = row.get("gNBId")
 
-        # --------------------------------
-        # VALIDATE IDs
-        # --------------------------------
-        eNB_valid = (
-        pd.notna(eNBId)
-        and str(eNBId).strip() != ""
-        and str(eNBId).strip().lower() != "nan"
-        )
+            G2_suffixes = ("5216", "6630")
+            G3_suffixes = ("6651", "6648", "6339", "6337", "6507")
+            g2_pattern = "|".join(G2_suffixes)
+            g3_pattern = "|".join(G3_suffixes)
 
-        gNB_valid = (
-        pd.notna(gNBId)
-        and str(gNBId).strip() != ""
-        and str(gNBId).strip().lower() != "nan"
-        )
-
-        # --------------------------------
-        # FILTER DATA
-        # --------------------------------
-        if eNB_valid:
-            site_lte_df = lte_df[lte_df["eNBId"] == eNBId]
-        else:
-            site_lte_df = lte_df.iloc[0:0]
-
-        if gNB_valid:
-            site_fg_df = fiveg_df[fiveg_df["gNBId"] == gNBId]
-            site_sa_df = sa_df[sa_df["gNBId"] == gNBId]
-        else:
-            site_fg_df = fiveg_df.iloc[0:0]
-            site_sa_df = sa_df.iloc[0:0]
+            site_enb_df = enb_df[enb_df["eNBId"] == eNBId]
+            site_gnb_df = gnb_df[gnb_df["gNBId"] == gNBId]
 
 
-        # ------------------------------------------------------------------------------------------------
-        # Suffix related PRESENCE
-        # ------------------------------------------------------------------------------------------------
+            is_lte_g2 = (site_enb_df["DU type"].astype(str).str.contains(g2_pattern, na=False).any())
+            is_lte_g3 = (site_enb_df["DU type"].astype(str).str.contains(g3_pattern, na=False).any())
+
+            is_fg_g2 = (site_gnb_df["DU type"].astype(str).str.contains(g2_pattern, na=False).any())
+            is_fg_g3 = (site_gnb_df["DU type"].astype(str).str.contains(g3_pattern, na=False).any())
 
 
-        # --------------------------------
-        # n77 PRESENCE
-        # --------------------------------
-        
-
-
-
-        site_n77 = site_fg_df[site_fg_df["NRCellDU"].astype(str).str.contains("N077", case=False, na=False)]
-        site_n260 = site_fg_df[site_fg_df["NRCellDU"].astype(str).str.contains("N260", case=False, na=False)]
-        site_non_n77 = site_fg_df[~site_fg_df["NRCellDU"].astype(str).str.contains("N077|N260", case=False, na=False)]
-        has_n77 = not site_n77.empty
-        has_non_n77 = not site_non_n77.empty
-        has_hb = not site_n260.empty
-
-
-        # --------------------------------
-        # Bandwidth Classification
-        # --------------------------------
-        if (not site_non_n77.empty and "bSChannelBwDL" in site_non_n77.columns):
             
-            bw_numeric = pd.to_numeric(site_non_n77["bSChannelBwDL"], errors="coerce")
-            bw_below_10Mhz = site_non_n77[bw_numeric < 10]
-            bw_10Mhz_or_above = site_non_n77[bw_numeric >= 10]
-        else:
-            bw_below_10Mhz = site_non_n77.iloc[0:0]
-            bw_10Mhz_or_above = site_non_n77.iloc[0:0]
+            if pd.isna(siteid):
+                continue
+
+            site_output_lines = []
+
+            # --------------------------------
+            # VALIDATE IDs
+            # --------------------------------
+            eNB_valid = (
+            pd.notna(eNBId)
+            and str(eNBId).strip() != ""
+            and str(eNBId).strip().lower() != "nan"
+            )
+
+            gNB_valid = (
+            pd.notna(gNBId)
+            and str(gNBId).strip() != ""
+            and str(gNBId).strip().lower() != "nan"
+            )
+
+            # --------------------------------
+            # FILTER DATA
+            # --------------------------------
+            if eNB_valid:
+                site_lte_df = lte_df[lte_df["eNBId"] == eNBId]
+            else:
+                site_lte_df = lte_df.iloc[0:0]
+
+            if gNB_valid:
+                site_fg_df = fiveg_df[fiveg_df["gNBId"] == gNBId]
+                site_sa_df = sa_df[sa_df["gNBId"] == gNBId]
+            else:
+                site_fg_df = fiveg_df.iloc[0:0]
+                site_sa_df = sa_df.iloc[0:0]
+
+
+            # ------------------------------------------------------------------------------------------------
+            # Suffix related PRESENCE
+            # ------------------------------------------------------------------------------------------------
+
+
+            # --------------------------------
+            # n77 PRESENCE
+            # --------------------------------
+            
 
 
 
-        no_n77 = len(site_n77)
-        has_bw_below_10Mhz = not bw_below_10Mhz.empty
-        has_bw_10Mhz_or_above = not bw_10Mhz_or_above.empty
+            site_n77 = site_fg_df[site_fg_df["NRCellDU"].astype(str).str.contains("N077", case=False, na=False)]
+            site_n260 = site_fg_df[site_fg_df["NRCellDU"].astype(str).str.contains("N260", case=False, na=False)]
+            site_non_n77 = site_fg_df[~site_fg_df["NRCellDU"].astype(str).str.contains("N077|N260", case=False, na=False)]
+            has_n77 = not site_n77.empty
+            has_non_n77 = not site_non_n77.empty
+            has_hb = not site_n260.empty
+
+
+            # --------------------------------
+            # Bandwidth Classification
+            # --------------------------------
+            if (not site_non_n77.empty and "bSChannelBwDL" in site_non_n77.columns):
+                
+                bw_numeric = pd.to_numeric(site_non_n77["bSChannelBwDL"], errors="coerce")
+                bw_below_10Mhz = site_non_n77[bw_numeric < 10]
+                bw_10Mhz_or_above = site_non_n77[bw_numeric >= 10]
+            else:
+                bw_below_10Mhz = site_non_n77.iloc[0:0]
+                bw_10Mhz_or_above = site_non_n77.iloc[0:0]
 
 
 
-        # --------------------------------
-        # ACTUAL NODE PRESENCE
-        # --------------------------------
-        has_lte = not site_lte_df.empty
-
-        has_nr = not site_fg_df.empty
-
-        # --------------------------------
-        # SA PRESENCE
-        # --------------------------------
-
-        is_sa = not site_sa_df.empty
-
-        # --------------------------------
-        # Vonr PRESENCE
-        # --------------------------------
-
-        if gNB_valid and "VoNR" in site_fg_df.columns:
-            is_vonr = (site_fg_df["VoNR"].astype(str).str.strip().str.upper().eq("YES").any())
-        else:
-            is_vonr = False
-
-        # --------------------------------
-        # DSS cells
-        # --------------------------------
-
-        dss_lte_cells = set(dss_clean[~dss_clean.isin(["NO", "NA", "N/A"])])
-        dss_fg_cells = set(dss_clean[~dss_clean.isin(["NO", "NA", "N/A"])].index)
-
-        non_dss_fg_cells = set(dss_clean[dss_clean.isin(["NO", "NA", "N/A"])].index)
-
-        # --------------------------------
-        # cells
-        # --------------------------------
-
-        n77 = fiveg_df["NRCellDU"].astype(str).str.contains("N077", case=False, na=False).any()
-        b17 = lte_df["eUTRA operating band"].astype(str).str.contains(r"Band\s*17\b", case=False, na=False).any()
-        b14 = lte_df["eUTRA operating band"].astype(str).str.contains(r"Band\s*14\b", case=False, na=False).any()
-        mb_usid = lte_df["eUTRA operating band"].astype(str).str.contains(r"Band\s*(?:2|4|66)\b", case=False, na=False).any()
-
-
-        iscran = lte_df["EutranCellFDDId"].astype(str).str.contains(r"_R0", case=False, na=False).any()
+            no_n77 = len(site_n77)
+            has_bw_below_10Mhz = not bw_below_10Mhz.empty
+            has_bw_10Mhz_or_above = not bw_10Mhz_or_above.empty
 
 
 
+            # --------------------------------
+            # ACTUAL NODE PRESENCE
+            # --------------------------------
+            has_lte = not site_lte_df.empty
 
-        b2_df = site_lte_df[site_lte_df["eUTRA operating band"].astype(str).str.contains(r"Band\s*2\b", case=False, na=False)]
-        b4_df = site_lte_df[site_lte_df["eUTRA operating band"].astype(str).str.contains(r"Band\s*4\b", case=False, na=False)]
-        b66_df = site_lte_df[site_lte_df["eUTRA operating band"].astype(str).str.contains(r"Band\s*66\b", case=False, na=False)]
+            has_nr = not site_fg_df.empty
+
+            # --------------------------------
+            # SA PRESENCE
+            # --------------------------------
+
+            is_sa = not site_sa_df.empty
+
+            # --------------------------------
+            # Vonr PRESENCE
+            # --------------------------------
+
+            if gNB_valid and "VoNR" in site_fg_df.columns:
+                is_vonr = (site_fg_df["VoNR"].astype(str).str.strip().str.upper().eq("YES").any())
+            else:
+                is_vonr = False
+
+            # --------------------------------
+            # cells
+            # --------------------------------
+
+            b2_df = site_lte_df[site_lte_df["eUTRA operating band"].astype(str).str.contains(r"Band\s*2\b", case=False, na=False)]
+            b4_df = site_lte_df[site_lte_df["eUTRA operating band"].astype(str).str.contains(r"Band\s*4\b", case=False, na=False)]
+            b66_df = site_lte_df[site_lte_df["eUTRA operating band"].astype(str).str.contains(r"Band\s*66\b", case=False, na=False)]
 
 
 
-        b5_df = site_lte_df[site_lte_df["eUTRA operating band"].astype(str).str.contains(r"Band\s*5\b",case=False,na=False)]
-        b17_df = site_lte_df[site_lte_df["eUTRA operating band"].astype(str).str.contains(r"Band\s*17\b",case=False,na=False)]
-        b14_df = site_lte_df[site_lte_df["eUTRA operating band"].astype(str).str.contains(r"Band\s*14\b",case=False,na=False)]
-        b29_df = site_lte_df[site_lte_df["eUTRA operating band"].astype(str).str.contains(r"Band\s*29\b",case=False,na=False)]
-        b30_df = site_lte_df[site_lte_df["eUTRA operating band"].astype(str).str.contains(r"Band\s*30\b",case=False,na=False)]
+            b5_df = site_lte_df[site_lte_df["eUTRA operating band"].astype(str).str.contains(r"Band\s*5\b",case=False,na=False)]
+            b17_df = site_lte_df[site_lte_df["eUTRA operating band"].astype(str).str.contains(r"Band\s*17\b",case=False,na=False)]
+            b14_df = site_lte_df[site_lte_df["eUTRA operating band"].astype(str).str.contains(r"Band\s*14\b",case=False,na=False)]
+            b29_df = site_lte_df[site_lte_df["eUTRA operating band"].astype(str).str.contains(r"Band\s*29\b",case=False,na=False)]
+            b30_df = site_lte_df[site_lte_df["eUTRA operating band"].astype(str).str.contains(r"Band\s*30\b",case=False,na=False)]
 
-        mb_df = pd.concat([b2_df, b4_df, b66_df], ignore_index=True)
+            mb_df = pd.concat([b2_df, b4_df, b66_df], ignore_index=True)
 
-        # Band 5 cells separated into 5 MHz and non-5 MHz
+            # Band 5 cells separated into 5 MHz and non-5 MHz
 
-        b5_5mhz_df = b5_df[b5_df["dlChannelBandwidth"].apply(parse_bw) == 5]
-        b5_non5mhz_df = b5_df[b5_df["dlChannelBandwidth"].apply(parse_bw) != 5]
-        
-        # Low-band cells = Band 17 + Band 5 (5 MHz only)
-        lb_cells = (b17_df["EutranCellFDDId"].tolist()+ b5_5mhz_df["EutranCellFDDId"].tolist())
-        # Mid-band cells = B2 + B4 + B66 + B5 (>5 MHz)
-        mb5_cells = (mb_df["EutranCellFDDId"].tolist()+ b5_non5mhz_df["EutranCellFDDId"].tolist())
+            b5_5mhz_df = b5_df[b5_df["dlChannelBandwidth"].apply(parse_bw) == 5]
+            b5_non5mhz_df = b5_df[b5_df["dlChannelBandwidth"].apply(parse_bw) != 5]
+            
+            # Low-band cells = Band 17 + Band 5 (5 MHz only)
+            lb_cells = (b17_df["EutranCellFDDId"].tolist()+ b5_5mhz_df["EutranCellFDDId"].tolist())
+            # Mid-band cells = B2 + B4 + B66 + B5 (>5 MHz)
+            mb5_cells = (mb_df["EutranCellFDDId"].tolist()+ b5_non5mhz_df["EutranCellFDDId"].tolist())
 
-        mb_cells = mb_df["EutranCellFDDId"].tolist()
-        b17_cells = b17_df["EutranCellFDDId"].tolist()
-        b5_cells = b5_df["EutranCellFDDId"].tolist()
-        b66_cells = b66_df["EutranCellFDDId"].tolist()
-        b14_cells = b14_df["EutranCellFDDId"].tolist()
-        b29_cells = b29_df["EutranCellFDDId"].tolist()
-        b30_cells = b30_df["EutranCellFDDId"].tolist()
+            mb_cells = mb_df["EutranCellFDDId"].tolist()
+            b17_cells = b17_df["EutranCellFDDId"].tolist()
+            b5_cells = b5_df["EutranCellFDDId"].tolist()
+            b66_cells = b66_df["EutranCellFDDId"].tolist()
+            b14_cells = b14_df["EutranCellFDDId"].tolist()
+            b29_cells = b29_df["EutranCellFDDId"].tolist()
+            b30_cells = b30_df["EutranCellFDDId"].tolist()
 
-        #-------------------------------------------------------------------
-        #           Catm Cells
-        #-------------------------------------------------------------------
 
-        catm_cells = []
+            #-------------------------------------------------------------------
+            #          Cell Flags
+            #-------------------------------------------------------------------
 
-        if not b17_df.empty:
-            # Highest priority -> All Band17 cells
-            catm_cells = b17_df["EutranCellFDDId"].tolist()
+            n77 = fiveg_df["NRCellDU"].astype(str).str.contains("N077", case=False, na=False).any()
+            b17 = lte_df["eUTRA operating band"].astype(str).str.contains(r"Band\s*17\b", case=False, na=False).any()
+            b5_5mhz = (lte_df["eUTRA operating band"].astype(str).str.contains(r"Band\s*5\b", case=False, na=False) & (lte_df["dlChannelBandwidth"].apply(parse_bw) == 5)).any()
+            b14 = lte_df["eUTRA operating band"].astype(str).str.contains(r"Band\s*14\b", case=False, na=False).any()
+            mb_usid = lte_df["eUTRA operating band"].astype(str).str.contains(r"Band\s*(?:2|4|66)\b", case=False, na=False).any()
+            lb_usid = b17 or b5_5mhz
 
-        else:
+            print(lb_usid)
+            iscran = lte_df["EutranCellFDDId"].astype(str).str.contains(r"_R0", case=False, na=False).any()
+            hicap = not lte_df["High Capacity Site"].astype(str).str.strip().str.contains(r"^(?:NO|NA|N/A)$", case=False, na=False).any()
 
-            best_b2 = pd.DataFrame()
-            best_b4 = pd.DataFrame()
 
-            # Highest BW Band2 carrier
+
+
+            #-------------------------------------------------------------------
+            #           Catm Cells
+            #-------------------------------------------------------------------
+
+            catm_cells = []
+
+            if not b17_df.empty:
+                # Highest priority -> All Band17 cells
+                catm_cells = b17_df["EutranCellFDDId"].tolist()
+
+            else:
+
+                best_b2 = pd.DataFrame(columns=b2_df.columns)
+                best_b4 = pd.DataFrame(columns=b4_df.columns)
+
+                # Highest BW Band2 carrier
+                if not b2_df.empty:
+                    b2_df = b2_df.copy()
+                    b2_df["BW"] = b2_df["dlChannelBandwidth"].apply(parse_bw)
+
+                    max_bw = b2_df["BW"].max()
+
+                    best_b2 = b2_df[b2_df["BW"] == max_bw]
+
+                # Highest BW Band4 carrier
+                if not b4_df.empty:
+                    b4_df = b4_df.copy()
+                    b4_df["BW"] = b4_df["dlChannelBandwidth"].apply(parse_bw)
+
+                    max_bw = b4_df["BW"].max()
+
+                    best_b4 = b4_df[b4_df["BW"] == max_bw]
+
+                b2_bw = best_b2["BW"].iloc[0] if not best_b2.empty else -1
+                b4_bw = best_b4["BW"].iloc[0] if not best_b4.empty else -1
+
+                # Band2 wins ties
+                if b2_bw >= b4_bw:
+                    catm_cells = best_b2["EutranCellFDDId"].tolist()
+                else:
+                    catm_cells = best_b4["EutranCellFDDId"].tolist()
+
+            is_catm_node = bool(catm_cells)
+
+
+            #-------------------------------------------------------------------
+            #           Sleep Cells
+            #-------------------------------------------------------------------
+
+            lowest_b2_df = pd.DataFrame()
+            lowest_b4_df = pd.DataFrame()
+
+            # Lowest Band 2 carrier
             if not b2_df.empty:
-                b2_df = b2_df.copy()
-                b2_df["BW"] = b2_df["dlChannelBandwidth"].apply(parse_bw)
+                tmp = b2_df.copy()
+                tmp["EARFCN"] = pd.to_numeric(tmp["earfcnDl"], errors="coerce")
 
-                max_bw = b2_df["BW"].max()
+                lowest_b2_earfcn = tmp["EARFCN"].min()
+                lowest_b2_df = tmp[tmp["EARFCN"] == lowest_b2_earfcn]
 
-                best_b2 = b2_df[b2_df["BW"] == max_bw]
-
-            # Highest BW Band4 carrier
+            # Lowest Band 4 carrier
             if not b4_df.empty:
-                b4_df = b4_df.copy()
-                b4_df["BW"] = b4_df["dlChannelBandwidth"].apply(parse_bw)
+                tmp = b4_df.copy()
+                tmp["EARFCN"] = pd.to_numeric(tmp["earfcnDl"], errors="coerce")
 
-                max_bw = b4_df["BW"].max()
-
-                best_b4 = b4_df[b4_df["BW"] == max_bw]
-
-            b2_bw = best_b2["BW"].iloc[0] if not best_b2.empty else -1
-            b4_bw = best_b4["BW"].iloc[0] if not best_b4.empty else -1
-
-            # Band2 wins ties
-            if b2_bw >= b4_bw:
-                catm_cells = best_b2["EutranCellFDDId"].tolist()
-            else:
-                catm_cells = best_b4["EutranCellFDDId"].tolist()
-
-        is_catm_node = bool(catm_cells)
+                lowest_b4_earfcn = tmp["EARFCN"].min()
+                lowest_b4_df = tmp[tmp["EARFCN"] == lowest_b4_earfcn]
 
 
-        #-------------------------------------------------------------------
-        #           Sleep Cells
-        #-------------------------------------------------------------------
+            sleep_cells = []
 
-        lowest_b2_df = pd.DataFrame()
-        lowest_b4_df = pd.DataFrame()
+            # B29
+            sleep_cells.extend(b29_df["EutranCellFDDId"].tolist())
 
-        # Lowest Band 2 carrier
-        if not b2_df.empty:
-            tmp = b2_df.copy()
-            tmp["EARFCN"] = pd.to_numeric(tmp["earfcnDl"], errors="coerce")
+            # B30
+            sleep_cells.extend(b30_df["EutranCellFDDId"].tolist())
 
-            lowest_b2_earfcn = tmp["EARFCN"].min()
-            lowest_b2_df = tmp[tmp["EARFCN"] == lowest_b2_earfcn]
+            # B66
+            sleep_cells.extend(b66_df["EutranCellFDDId"].tolist())
 
-        # Lowest Band 4 carrier
-        if not b4_df.empty:
-            tmp = b4_df.copy()
-            tmp["EARFCN"] = pd.to_numeric(tmp["earfcnDl"], errors="coerce")
+            # Band5 (5 MHz only)
+            sleep_cells.extend(b5_5mhz_df["EutranCellFDDId"].tolist())
 
-            lowest_b4_earfcn = tmp["EARFCN"].min()
-            lowest_b4_df = tmp[tmp["EARFCN"] == lowest_b4_earfcn]
+            # Compare lowest carriers between B2 and B4
+            if not lowest_b2_df.empty and not lowest_b4_df.empty:
 
+                if lowest_b2_df["EARFCN"].iloc[0] <= lowest_b4_df["EARFCN"].iloc[0]:
+                    sleep_cells.extend(lowest_b2_df["EutranCellFDDId"].tolist())
+                else:
+                    sleep_cells.extend(lowest_b4_df["EutranCellFDDId"].tolist())
 
-        sleep_cells = []
-
-        # B29
-        sleep_cells.extend(b29_df["EutranCellFDDId"].tolist())
-
-        # B30
-        sleep_cells.extend(b30_df["EutranCellFDDId"].tolist())
-
-        # B66
-        sleep_cells.extend(b66_df["EutranCellFDDId"].tolist())
-
-        # Band5 (5 MHz only)
-        sleep_cells.extend(b5_5mhz_df["EutranCellFDDId"].tolist())
-
-        # Compare lowest carriers between B2 and B4
-        if not lowest_b2_df.empty and not lowest_b4_df.empty:
-
-            if lowest_b2_df["EARFCN"].iloc[0] <= lowest_b4_df["EARFCN"].iloc[0]:
+            elif not lowest_b2_df.empty:
                 sleep_cells.extend(lowest_b2_df["EutranCellFDDId"].tolist())
-            else:
+
+            elif not lowest_b4_df.empty:
                 sleep_cells.extend(lowest_b4_df["EutranCellFDDId"].tolist())
 
-        elif not lowest_b2_df.empty:
-            sleep_cells.extend(lowest_b2_df["EutranCellFDDId"].tolist())
+            # Remove duplicates
+            sleep_cells = list(dict.fromkeys(sleep_cells))
 
-        elif not lowest_b4_df.empty:
-            sleep_cells.extend(lowest_b4_df["EutranCellFDDId"].tolist())
+            ###############################################################################
+            # primaryUpperLayerInd
+            ###############################################################################
 
-        # Remove duplicates
-        sleep_cells = list(dict.fromkeys(sleep_cells))
+            bands = (
+                site_fg_df["Operating Band"]
+                .astype(str)
+                .str.strip()
+                .str.upper()
+            )
 
-        ###############################################################################
-        # primaryUpperLayerInd
-        ###############################################################################
+            only_nr_lb = has_nr and bands.eq("850").all()
+            multiple_nr_bands = bands.nunique() > 2
+            primary_upper_on_cells = set()
 
-        bands = (
-            site_fg_df["Operating Band"]
-            .astype(str)
-            .str.strip()
-            .str.upper()
+            # Case 1: No 5G present
+            # -> OFF (do nothing)
+
+            if not has_nr:
+                pass
+
+            # Case 2: Site has any non-NR_LB band
+            # -> All B14/B17 ON
+            elif not only_nr_lb:
+                primary_upper_on_cells.update(b14_cells)
+                primary_upper_on_cells.update(b17_cells)
+
+            # Case 3: Site has only NR_LB
+            # -> Check Nokia_Relations(LTE-NR)
+            else:
+
+                for cell in b14_cells + b17_cells:
+
+                    relations = (
+                        la_n.loc[
+                            la_n["Ericsson FDD/TDD"] == cell,
+                            "GutranFreqRelationID"
+                        ]
+                        .astype(str)
+                        .str.strip()
+                    )
+
+                    if any(not rel.startswith("17") for rel in relations):
+                        primary_upper_on_cells.add(cell)
+
+
+
+            
+            #-------------------------------------------------------------------
+            #           PS Cells
+            #-------------------------------------------------------------------
+
+
+
+            pcell_scell_map = {
+        "B14": ["B2", "B4", "B66"],
+        "B17": ["B2", "B4", "B66"],
+        "B5":  ["B2", "B4", "B66", "B5", "B30"],
+        "B30": ["B2", "B4", "B5", "B14", "B17", "B29", "B66"],
+        "B4":  ["B2", "B4", "B5", "B14", "B17", "B29", "B30", "B66"],
+        "B66": ["B2", "B4", "B5", "B14", "B17", "B29", "B30", "B66"],
+        "B2":  ["B2", "B4", "B5", "B14", "B17", "B29", "B30", "B66"],
+    }
+
+            cell_band = {}
+
+            for c in mb_df["EutranCellFDDId"]:
+                row = mb_df.loc[mb_df["EutranCellFDDId"] == c].iloc[0]
+                band = str(row["eUTRA operating band"]).upper()
+
+                if "66" in band:
+                    cell_band[c] = "B66"
+                elif "4" in band:
+                    cell_band[c] = "B4"
+                elif "2" in band:
+                    cell_band[c] = "B2"
+
+            for c in b5_df["EutranCellFDDId"]:
+                cell_band[c] = "B5"
+
+            for c in b14_df["EutranCellFDDId"]:
+                cell_band[c] = "B14"
+
+            for c in b17_df["EutranCellFDDId"]:
+                cell_band[c] = "B17"
+
+            for c in b30_df["EutranCellFDDId"]:
+                cell_band[c] = "B30"
+
+            for c in b29_df["EutranCellFDDId"]:
+                cell_band[c] = "B29"
+
+            # --------------------------------
+            # Bandwidth Classification
+            # --------------------------------
+            if (not site_non_n77.empty and "bSChannelBwDL" in site_non_n77.columns):
+                
+                bw_numeric = pd.to_numeric(site_non_n77["bSChannelBwDL"], errors="coerce")
+                bw_5Mhz = site_non_n77[bw_numeric == 5]
+                bw_not_5Mhz = site_non_n77[bw_numeric > 5]
+            else:
+                bw_5Mhz = site_non_n77.iloc[0:0]
+                bw_not_5Mhz = site_non_n77.iloc[0:0]
+
+
+
+
+
+
+            # ------------------------------------------------------------------------------------------------
+            # CLASSIFY NODE TYPE
+            # ------------------------------------------------------------------------------------------------
+            if has_lte and has_n77 and has_non_n77:
+                resolved_type = "tmbb"
+
+            elif has_lte and (has_n77 or has_non_n77):
+                resolved_type = "mmbb"
+
+            elif has_nr:
+                resolved_type = "nr"
+
+            elif has_lte:
+                resolved_type = "lte"
+
+            else:
+                resolved_type = "unknown"
+
+            print(siteid, "->", resolved_type)
+
+
+            # ------------------------------------------------------------------------------------------------
+            # GENERATE SCRIPTS
+            # ------------------------------------------------------------------------------------------------
+            if resolved_type == "tmbb":
+                site_output_lines.extend(delta_script(siteid))
+
+            elif resolved_type == "mmbb":
+                site_output_lines.extend(delta_script(siteid))
+
+            elif resolved_type == "nr":
+                site_output_lines.extend(delta_script(siteid))
+
+            elif resolved_type == "lte":
+                site_output_lines.extend(delta_script(siteid))
+
+            # ------------------------------------------------------------------------------------------------
+            # STORE OUTPUT
+            # ------------------------------------------------------------------------------------------------
+            if site_output_lines:
+                all_site_outputs[siteid] = (f"{siteid}_NDS_Delta_script.txt","\n".join(site_output_lines))
+        return all_site_outputs
+
+    finally:
+        if repaired_excel_temp and usable_excel_path:
+            try:
+                os.remove(usable_excel_path)
+            except:
+                pass</script>
+
+<!-- excel_repair.py (verbatim, used by NDS_con.py to auto-fix corrupt CIQ stylesheets) -->
+<script id="PY_EXCEL_REPAIR" type="text/plain">import os
+import zipfile
+import tempfile
+import shutil
+
+from contextlib import contextmanager
+from openpyxl import load_workbook
+
+
+MINIMAL_STYLES = '''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <fonts count="1">
+    <font>
+      <sz val="11"/>
+      <color theme="1"/>
+      <name val="Calibri"/>
+      <family val="2"/>
+    </font>
+  </fonts>
+  <fills count="2">
+    <fill><patternFill patternType="none"/></fill>
+    <fill><patternFill patternType="gray125"/></fill>
+  </fills>
+  <borders count="1">
+    <border><left/><right/><top/><bottom/><diagonal/></border>
+  </borders>
+  <cellStyleXfs count="1">
+    <xf numFmtId="0" fontId="0" fillId="0" borderId="0"/>
+  </cellStyleXfs>
+  <cellXfs count="1">
+    <xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>
+  </cellXfs>
+  <cellStyles count="1">
+    <cellStyle name="Normal" xfId="0" builtinId="0"/>
+  </cellStyles>
+</styleSheet>
+'''
+
+
+def repair_stylesheet_to_temp(path):
+
+    temp_dir = tempfile.mkdtemp()
+
+    try:
+
+        with zipfile.ZipFile(path, 'r') as z:
+            z.extractall(temp_dir)
+
+        styles_path = os.path.join(temp_dir, 'xl', 'styles.xml')
+
+        with open(styles_path, 'w', encoding='utf-8') as f:
+            f.write(MINIMAL_STYLES)
+
+        repaired_path = os.path.join(
+            tempfile.gettempdir(),
+            next(tempfile._get_candidate_names()) + '.xlsx'
         )
 
-        has_5g = not site_fg_df.empty
-        only_nr_lb = has_5g and bands.eq("850").all()
-        multiple_nr_bands = bands.nunique() > 2
-        primary_upper_on_cells = set()
+        with zipfile.ZipFile(
+            repaired_path,
+            'w',
+            zipfile.ZIP_DEFLATED
+        ) as z:
 
-        # Case 1: No 5G present
-        # -> OFF (do nothing)
+            for root, _, files in os.walk(temp_dir):
 
-        if not has_5g:
-            pass
+                for file in files:
 
-        # Case 2: Site has any non-NR_LB band
-        # -> All B14/B17 ON
-        elif not only_nr_lb:
-            primary_upper_on_cells.update(b14_cells)
-            primary_upper_on_cells.update(b17_cells)
+                    full_path = os.path.join(root, file)
 
-        # Case 3: Site has only NR_LB
-        # -> Check Nokia_Relations(LTE-NR)
-        else:
+                    arcname = os.path.relpath(full_path, temp_dir)
 
-            for cell in b14_cells + b17_cells:
+                    z.write(full_path, arcname)
 
-                relations = (
-                    la_n.loc[
-                        la_n["Ericsson FDD/TDD"] == cell,
-                        "GutranFreqRelationID"
-                    ]
-                    .astype(str)
-                    .str.strip()
-                )
+        return repaired_path
 
-                if any(not rel.startswith("17") for rel in relations):
-                    primary_upper_on_cells.add(cell)
+    finally:
+
+        shutil.rmtree(temp_dir, ignore_errors=True)
 
 
+def get_usable_excel_path(path):
 
-        
-        #-------------------------------------------------------------------
-        #           PS Cells
-        #-------------------------------------------------------------------
+    try:
 
+        wb = load_workbook(
+            path,
+            read_only=True,
+            data_only=True
+        )
 
+        wb.close()
 
-        pcell_scell_map = {
-    "B14": ["B2", "B4", "B66"],
-    "B17": ["B2", "B4", "B66"],
-    "B5":  ["B2", "B4", "B66", "B5", "B30"],
-    "B30": ["B2", "B4", "B5", "B14", "B17", "B29", "B66"],
-    "B4":  ["B2", "B4", "B5", "B14", "B17", "B29", "B30", "B66"],
-    "B66": ["B2", "B4", "B5", "B14", "B17", "B29", "B30", "B66"],
-    "B2":  ["B2", "B4", "B5", "B14", "B17", "B29", "B30", "B66"],
-}
+        return path, False
 
-        cell_band = {}
+    except Exception as e:
 
-        for c in mb_df["EutranCellFDDId"]:
-            row = mb_df.loc[mb_df["EutranCellFDDId"] == c].iloc[0]
-            band = str(row["eUTRA operating band"]).upper()
+        text = str(e).lower()
 
-            if "66" in band:
-                cell_band[c] = "B66"
-            elif "4" in band:
-                cell_band[c] = "B4"
-            elif "2" in band:
-                cell_band[c] = "B2"
+        if (
+            'stylesheet' in text
+            or 'argb' in text
+            or 'colors must be argb' in text
+        ):
 
-        for c in b5_df["EutranCellFDDId"]:
-            cell_band[c] = "B5"
+            repaired = repair_stylesheet_to_temp(path)
 
-        for c in b14_df["EutranCellFDDId"]:
-            cell_band[c] = "B14"
+            wb = load_workbook(
+                repaired,
+                read_only=True,
+                data_only=True
+            )
 
-        for c in b17_df["EutranCellFDDId"]:
-            cell_band[c] = "B17"
+            wb.close()
 
-        for c in b30_df["EutranCellFDDId"]:
-            cell_band[c] = "B30"
+            return repaired, True
 
-        for c in b29_df["EutranCellFDDId"]:
-            cell_band[c] = "B29"
-
-        # --------------------------------
-        # Bandwidth Classification
-        # --------------------------------
-        if (not site_non_n77.empty and "bSChannelBwDL" in site_non_n77.columns):
-            
-            bw_numeric = pd.to_numeric(site_non_n77["bSChannelBwDL"], errors="coerce")
-            bw_5Mhz = site_non_n77[bw_numeric == 5]
-            bw_not_5Mhz = site_non_n77[bw_numeric > 5]
-        else:
-            bw_5Mhz = site_non_n77.iloc[0:0]
-            bw_not_5Mhz = site_non_n77.iloc[0:0]
+        raise
 
 
+@contextmanager
+def repaired_excel(path):
 
+    usable_path, repaired = get_usable_excel_path(path)
 
+    try:
+        yield usable_path
 
-
-        # ------------------------------------------------------------------------------------------------
-        # CLASSIFY NODE TYPE
-        # ------------------------------------------------------------------------------------------------
-        if has_lte and has_n77 and has_non_n77:
-            resolved_type = "tmbb"
-
-        elif has_lte and (has_n77 or has_non_n77):
-            resolved_type = "mmbb"
-
-        elif has_nr:
-            resolved_type = "nr"
-
-        elif has_lte:
-            resolved_type = "lte"
-
-        else:
-            resolved_type = "unknown"
-
-        print(siteid, "->", resolved_type)
-
-
-        # ------------------------------------------------------------------------------------------------
-        # GENERATE SCRIPTS
-        # ------------------------------------------------------------------------------------------------
-        if resolved_type == "tmbb":
-            site_output_lines.extend(delta_script(siteid))
-
-        elif resolved_type == "mmbb":
-            site_output_lines.extend(delta_script(siteid))
-
-        elif resolved_type == "nr":
-            site_output_lines.extend(delta_script(siteid))
-
-        elif resolved_type == "lte":
-            site_output_lines.extend(delta_script(siteid))
-
-
-        # ------------------------------------------------------------------------------------------------
-        # STORE OUTPUT
-        # ------------------------------------------------------------------------------------------------
-
-        if site_output_lines:
-            all_site_outputs[siteid] = (f"{siteid}_NDS_Delta_script.txt","\n".join(site_output_lines))
-            
-    return all_site_outputs
-</script>
+    finally:
+        if repaired:
+            try:
+                os.remove(usable_path)
+            except:
+                pass</script>
 
 <script>
 // ── ToolPortal SPA back navigation ─────────────────────────────────────────
@@ -2460,13 +2658,6 @@ function trinovaBackToPortal() {
 
 var sel={fga:false,nds:false};
 var fgaGen='auto';
-var ndsOpts={hicap:false,dss:false,idas:false,fnsa:false};
-
-function toggleNdsOpt(e,key){
-  e.stopPropagation();
-  ndsOpts[key]=!ndsOpts[key];
-  document.getElementById('nds-'+key).classList.toggle('active',ndsOpts[key]);
-}
 
 var breadcrumbs={audit:'Audit Tool',generator:'Audit Tool / Delta Scripts',kgetall:'Audit Tool / KGetAll Comparison Tool',lockunlock:'Audit Tool / Lock & Unlock',manualcmd:'Audit Tool / Manual Cmd'};
 
@@ -2832,6 +3023,8 @@ function ensurePyodide(){
     await pyodide.loadPackage(['pandas','micropip']);
     await pyodide.runPythonAsync('import micropip\nawait micropip.install("openpyxl")');
     var pySrc=document.getElementById('PY_NDS_CON').textContent;
+    var repairSrc=document.getElementById('PY_EXCEL_REPAIR').textContent;
+    pyodide.FS.writeFile('/excel_repair.py', repairSrc);
     pyodide.FS.writeFile('/NDS_con.py', pySrc);
     await pyodide.runPythonAsync('import sys\nif "/" not in sys.path: sys.path.insert(0, "/")\nfrom NDS_con import NDS_delta_generator');
     return pyodide;
@@ -2902,7 +3095,8 @@ async function generate(){
     for(var i=0;i<Math.min(fg.length,10);i++){if(fg[i].some(function(h){return String(h).trim()==='NRCellDU';})){fgHR=i;break;}}
     var fgH=fg[fgHR];
     var gc=function(n){return fgH.findIndex(function(h){return String(h).trim()===n;});};
-    var gCell=gc('NRCellDU'),gBand=gc('Operating Band'),gNSA=gc('NSA/SA'),gRRU=gc('RRU Type'),gBwDL=gc('bSChannelBwDL');
+    var gCell=gc('NRCellDU'),gBand=gc('Operating Band'),gNSA=gc('NSA/SA'),gRRU=gc('RRU Type'),gBwDL=gc('bSChannelBwDL'),gSsbFreq=gc('ssbFrequency'),gGnbId=gc('gNBId');
+    var ssbFreqLbMbMap={},gnbIdSet=new Set();
     var n077BwDLMap={};  // cellId -> bwDL for n077
     var g5={},saSectors={},nsaSectors={},rruSet5G=new Set(),feat4012817='DEACTIVATED';
     var AIR_MODELS=['AIR6419','AIR6449','AIR6472'];
@@ -3025,19 +3219,15 @@ async function generate(){
       await addDl(fgaOut,SITE_ID+'_FGA_DELTA.txt','FGA Delta Script ('+gen+')');
     }
 
-    // NDS DELTA (runs the original NDS_con_1.py, unmodified, via Pyodide)
+    // NDS DELTA (runs the latest NDS_con.py, unmodified, via Pyodide)
     if(sel.nds){
       bt.textContent='Loading NDS engine...';
       var pyodide=await ensurePyodide();
       bt.textContent='Running NDS Delta...';
       pyodide.FS.writeFile('/ciq_input.xlsx', new Uint8Array(ab));
-      var nodeOptions={
-        HiCap: ndsOpts.hicap,
-        DSS: ndsOpts.dss,
-        iDAS: ndsOpts.idas,
-        NODE_BANDS: {}
-      };
-      if(ndsOpts.fnsa) nodeOptions.NODE_BANDS[SITE_ID]={FN_SA:true};
+      // HiCap and iDAS are now auto-detected from the CIQ itself inside
+      // NDS_con.py; node_options is kept only for forward-compatibility.
+      var nodeOptions={};
       pyodide.globals.set('excel_path_js','/ciq_input.xlsx');
       pyodide.globals.set('node_options_js', pyodide.toPy(nodeOptions));
       var resultProxy=await pyodide.runPythonAsync('NDS_delta_generator(excel_path_js, node_options_js)');
@@ -3349,7 +3539,7 @@ async function kgDownloadExcel() {
 
 // ══ LOCK / UNLOCK TOOL ══
 var luMode='SHUTTINGDOWN';
-var luFilter='ENABLED';
+var luFilter='UNLOCKED';
 var luLastFile='';
 
 var luZone=document.getElementById('luZone');
@@ -3373,7 +3563,7 @@ function luReadFile(input){
 function luSetMode(m,el){
   luMode=m;
   document.querySelectorAll('.lu-mode-btn').forEach(function(b){b.className='lu-mode-btn';});
-  var cls={SHUTTINGDOWN:'lu-mode-btn active-sd',UNLOCKED:'lu-mode-btn active-ul',LOCKED:'lu-mode-btn active-lk'};
+  var cls={SHUTTINGDOWN:'lu-mode-btn active-sd',UNLOCKED:'lu-mode-btn active-ul'};
   el.className=cls[m];
   luGenerate();
 }
@@ -3431,6 +3621,21 @@ function luGenerate(){
   var skippedAll=lteSkip.concat(nrSkip);
   if(skippedAll.length){skipEl.style.display='block';skipEl.textContent='\u2298 Skipped: '+skippedAll.join(', ');}
   else skipEl.style.display='none';
+
+  // Update batch execute command based on mode and site ID
+  var batchCmd='';
+  if(luMode==='SHUTTINGDOWN'){
+    batchCmd='batch execute file:"'+site+'_shuttingdown.txt"';
+  } else if(luMode==='UNLOCKED'){
+    batchCmd='batch execute file:"'+site+'_unlocked.txt"';
+  }
+  document.getElementById('luBatchCmd').textContent=batchCmd;
+}
+
+function luCopyBatch(){
+  var cmd=document.getElementById('luBatchCmd').textContent.trim();
+  if(!cmd)return;
+  navigator.clipboard.writeText(cmd).then(function(){alert('Batch execute command copied!');});
 }
 
 function luCopy(){
