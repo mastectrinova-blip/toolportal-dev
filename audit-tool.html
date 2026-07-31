@@ -963,7 +963,7 @@ featureState : DEACTIVATED
 
 """)
 
-            if not has_hb and isdas:
+            if not has_hb and isidas:
                 state = "ACTIVATED"
 
             elif is_sa and is_vonr:
@@ -1057,7 +1057,7 @@ featureState : ACTIVATED
 
 """)
 
-            if not isdas:
+            if not isidas:
                 script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBDUFunction=1,UeCC=1,SchedulingProfile=TurboLive"
 schedulingAlgorithm : RESOURCE_FAIR
@@ -1067,7 +1067,7 @@ FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBDUF
 relativePriority : 64
 
 """)
-            elif not has_hb and isdas:
+            elif not has_hb and isidas:
                 script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBDUFunction=1,UeCC=1,SchedulingProfile=TurboLive"
 schedulingAlgorithm : PRIORITIZED_RATE
@@ -2145,7 +2145,7 @@ mlcEnabled : {"True" if bw<= 30 else "False"}
             # ------------------------------------------------------------------------------------------------
 
         isdas = "DAS" in str(enb_df["Structure Type"].iloc[0]).upper()
-        <!-- isidas = False -->
+        isidas = False
   
         for _, row in mixed_df.iterrows():
 
@@ -2261,14 +2261,15 @@ mlcEnabled : {"True" if bw<= 30 else "False"}
 
             is_sa = not site_sa_df.empty
 
-            <!-- # --------------------------------
+            # --------------------------------
             # iDAS PRESENCE
             # --------------------------------
-                    
-            if isdas:
-                antenna_values = fiveg_df["Antenna Type"].astype(str).str.upper()
+            idas_pattern = r"(_D|_B|_DB|_BD)$"
+            lte_idas = lte_df["EutranCellFDDId"].astype(str).str.upper().str.contains(idas_pattern, regex=True, na=False).any()
+            nr_idas = fiveg_df["EutranCellFDDId"].astype(str).str.upper().str.contains(idas_pattern, regex=True, na=False).any()
 
-                isidas = antenna_values.str.contains("IDAS", na=False).any() -->
+
+            isidas = isdas and (lte_idas or nr_idas)
 
             # --------------------------------
             # Vonr PRESENCE
