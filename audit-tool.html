@@ -3267,8 +3267,6 @@ async function generate(){
     var folder=pickedFolderHandle?pickedFolderHandle.name:'Downloads';
     document.getElementById('dlSection').innerHTML='';
 
-    alert('\u2705 Scripts generated and saved to "' + folder + '" folder successfully!');
-
   } catch(err){alert('Error: '+err.message);console.error(err);}
   finally{btn.disabled=false;sp.style.display='none';bt.textContent='\u26a1 Generate Scripts';}
 }
