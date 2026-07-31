@@ -867,7 +867,7 @@ def NDS_delta_generator(excel_file,node_options):
 
             is_3radio = "RRU Type" in fiveg.columns and fiveg["RRU Type"].astype(str).str.contains(r"AIR6419|AIR6449|AIR6472", case=False, na=False).any()
 
-            is_4890radio = "RRU Type" in lte.columns and lte["RRU type"].astype(str).str.contains(r"4890", case=False, na=False).any()
+            is_4890radio = "RRU type" in lte.columns and lte["RRU type"].astype(str).str.contains(r"4890", case=False, na=False).any()
 
             
             sa_clean = fiveg.set_index("NRCellDU")["NSA/SA"].astype(str).str.strip().str.upper()
@@ -917,7 +917,7 @@ diffAdmCtrlFilteringEnabled : true
 
 create
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,SubscriberGroupProfile=1"
-cellTriggerList : {{B14 CID}}
+cellTriggerList : {b14_cellids_str}
 
 """)
 
@@ -1650,7 +1650,7 @@ bothInterA3RsrpRsrqCheck : True
 """)
 
 
-                if cell in lb_cells and cell in b14_cells and cell in b29_cells:
+                if cell in lb_cells or cell in b14_cells or cell in b29_cells:
                     script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell}"
 systemInformationBlock3 : {{sNonIntraSearchQ=0,threshServingLowQ=1000}}
@@ -1731,7 +1731,7 @@ interFreqHoHigherPrioSnRel : {"True" if cell in lb_cells else "False"}
 
 set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell},UeMeasControl=1,ReportConfigB1GUtra=1"
-reportIntervalB1 : {"MS_480" if lte_anchor else "MS_120"}
+reportIntervalB1 : {"MS_120" if cell in b29_cells else ("MS_480" if lte_anchor else "MS_120")}
 
 
 """)
@@ -1766,10 +1766,6 @@ inhibitA2SearchConfig : NOT_INHIBIT
 
                 if cell in b14_cells:
                     script.append(f"""set
-FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell},UeMeasControl=1,ReportConfigSearch=1"
-a1a2SearchThresholdRsrp : -85
-
-set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell},UeMeasControl=1,ReportConfigA5=1"
 a5Threshold1Rsrp : -116
 a5Threshold2Rsrp : -112
@@ -1867,7 +1863,7 @@ FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBCUC
 rsrpCritical : {{threshold=-125}}
 
 """)
-                    if multiple_nr_bands:
+                    if not multiple_nr_bands:
                         script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBCUCPFunction=1,NRCellCU={cell}"
 hiPrioDetEnabled : False
@@ -2264,7 +2260,13 @@ mlcEnabled : {"True" if bw<= 30 else "False"}
             iscran = lte_df["EutranCellFDDId"].astype(str).str.contains(r"_R0", case=False, na=False).any()
             hicap = not lte_df["High Capacity Site"].astype(str).str.strip().str.contains(r"^(?:NO|NA|N/A)$", case=False, na=False).any()
 
+            #-------------------------------------------------------------------
+            #           B14 Cellids
+            #-------------------------------------------------------------------
 
+
+            b14_cellids = (b14_df["cellId"].dropna().astype(int).tolist())
+            b14_cellids_str = f"[{','.join(map(str, b14_cellids))}]"
 
 
             #-------------------------------------------------------------------
