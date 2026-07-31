@@ -822,8 +822,11 @@ def NDS_delta_generator(excel_file,node_options):
             return col.apply(lambda x: str(int(x)) if pd.notna(x) else "")
 
         def load_excel():
+            xls = pd.ExcelFile(usable_excel_path, engine="openpyxl")
+            is_rds = "IRU - DOT conenction" in xls.sheet_names
+
             sheets = pd.read_excel(
-                usable_excel_path,
+                xls,
                 sheet_name=[
                     "Mixed Mode Info",
                     "5G Info",
@@ -868,13 +871,15 @@ def NDS_delta_generator(excel_file,node_options):
             is_3radio = "RRU Type" in fiveg.columns and fiveg["RRU Type"].astype(str).str.contains(r"AIR6419|AIR6449|AIR6472", case=False, na=False).any()
 
             is_4890radio = "RRU type" in lte.columns and lte["RRU type"].astype(str).str.contains(r"4890", case=False, na=False).any()
+            is_4402radio = "RRU type" in lte.columns and lte["RRU type"].astype(str).str.contains(r"4402", case=False, na=False).any()
+            is_2203radio = "RRU type" in lte.columns and lte["RRU type"].astype(str).str.contains(r"2203", case=False, na=False).any()
 
             
             sa_clean = fiveg.set_index("NRCellDU")["NSA/SA"].astype(str).str.strip().str.upper()
             
-            return  mixed, fiveg, lte, enb, gnb, sa, sa_clean, is_3radio, is_4890radio, la_n, la_c
+            return  mixed, fiveg, lte, enb, gnb, is_rds, sa, sa_clean, is_3radio, is_4890radio, is_4402radio, is_2203radio, la_n, la_c
 
-        mixed_df, fiveg_df, lte_df, enb_df, gnb_df, sa_df, sa_clean, is_3radio, is_4890radio, la_n, la_c = load_excel()
+        mixed_df, fiveg_df, lte_df, enb_df, gnb_df, is_rds, sa_df, sa_clean, is_3radio, is_4890radio, is_4402radio, is_2203radio, la_n, la_c = load_excel()
 
 
 
@@ -1008,6 +1013,11 @@ featureState : ACTIVATED
 set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBCUCPFunction=1,UeGroupSelection=1,UeServiceGroupDefinition=AIA_B_Premium"
 selectionCriteria : "(rfsp==34||spid==34)&&(5qi==7||qci==7)"
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBCUCPFunction=1,UeGroupSelection=1,UeServiceGroupDefinition=FN_Turbo"
+selectionCriteria : "(spid==1||spid==2)||(qci==7||5qi==7)||(qci==199||5qi==199)||((qci==9||5qi==9)&&imeitac==35328216)"
+
 
 """)
             if not has_hb and not hicap:
@@ -1327,6 +1337,33 @@ FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},System
 featureState : ACTIVATED
 
 """)
+
+            if is_4402radio or is_2203radio:
+                script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012024"
+featureState : ACTIVATED
+
+""")
+            else:
+                script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012024"
+featureState : DEACTIVATED
+
+""")
+
+            if is_rds:
+                script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012082"
+featureState : DEACTIVATED
+
+""")
+            else:
+                script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012082"
+featureState : ACTIVATED
+
+""")
+
 
             if not isdas and not iscran:
                 script.append(f"""set
