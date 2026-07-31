@@ -2266,7 +2266,7 @@ mlcEnabled : {"True" if bw<= 30 else "False"}
             # --------------------------------
             idas_pattern = r"(_D|_B|_DB|_BD)$"
             lte_idas = lte_df["EutranCellFDDId"].astype(str).str.upper().str.contains(idas_pattern, regex=True, na=False).any()
-            nr_idas = fiveg_df["EutranCellFDDId"].astype(str).str.upper().str.contains(idas_pattern, regex=True, na=False).any()
+            nr_idas = fiveg_df["NRCellDU"].astype(str).str.upper().str.contains(idas_pattern, regex=True, na=False).any()
 
 
             isidas = isdas and (lte_idas or nr_idas)
