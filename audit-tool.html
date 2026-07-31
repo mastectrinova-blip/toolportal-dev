@@ -1824,14 +1824,14 @@ interFreqHoHigherPrioEnabled : False
 
                 if cell in b14_cells or cell in lb_cells or cell in b29_cells or ((cell in mb5_cells or cell in b30_cells) and not lb_usid):
                     script.append(f"""set
-FDN : "SubNetwork=ONRM_ROOT_MO,MeContext=AZPN096039,ManagedElement=AZPN096039,ENodeBFunction=1,EUtranCellFDD={cell},UeMeasControl=1,ReportConfigSearch=1"
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell},UeMeasControl=1,ReportConfigSearch=1"
 a2CriticalThresholdRsrp : -126
 
 
 """)
                 elif ((cell in mb5_cells or cell in b30_cells) and lb_usid):
                     script.append(f"""set
-FDN : "SubNetwork=ONRM_ROOT_MO,MeContext=AZPN096039,ManagedElement=AZPN096039,ENodeBFunction=1,EUtranCellFDD={cell},UeMeasControl=1,ReportConfigSearch=1"
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell},UeMeasControl=1,ReportConfigSearch=1"
 a2CriticalThresholdRsrp : -130
 
 """)
