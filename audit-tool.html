@@ -963,7 +963,7 @@ featureState : DEACTIVATED
 
 """)
 
-            if not has_hb and isidas:
+            if not has_hb and isdas:
                 state = "ACTIVATED"
 
             elif is_sa and is_vonr:
@@ -1057,7 +1057,7 @@ featureState : ACTIVATED
 
 """)
 
-            if not isidas:
+            if not isdas:
                 script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBDUFunction=1,UeCC=1,SchedulingProfile=TurboLive"
 schedulingAlgorithm : RESOURCE_FAIR
@@ -1067,7 +1067,7 @@ FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBDUF
 relativePriority : 64
 
 """)
-            elif not has_hb and isidas:
+            elif not has_hb and isdas:
                 script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBDUFunction=1,UeCC=1,SchedulingProfile=TurboLive"
 schedulingAlgorithm : PRIORITIZED_RATE
@@ -1388,6 +1388,13 @@ FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},System
 featureState : DEACTIVATED
 
 """)
+            else:
+                script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4010955"
+featureState : ACTIVATED
+
+""")
+
 
             if not multiple_nr_bands:
                 script.append(f"""set
@@ -1920,6 +1927,13 @@ FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBDUF
 pdcchSymbConfig : ADAPT_MAX_2
 
 """)
+                    else:
+                        script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBCUCPFunction=1,NRCellCU={cell}"
+hiPrioDetEnabled : True
+
+""")
+
 
                     if is_3radio:
                         script.append(f"""set 
@@ -2131,7 +2145,7 @@ mlcEnabled : {"True" if bw<= 30 else "False"}
             # ------------------------------------------------------------------------------------------------
 
         isdas = "DAS" in str(enb_df["Structure Type"].iloc[0]).upper()
-        isidas = False
+        <!-- isidas = False -->
   
         for _, row in mixed_df.iterrows():
 
@@ -2247,14 +2261,14 @@ mlcEnabled : {"True" if bw<= 30 else "False"}
 
             is_sa = not site_sa_df.empty
 
-            # --------------------------------
+            <!-- # --------------------------------
             # iDAS PRESENCE
             # --------------------------------
                     
             if isdas:
                 antenna_values = fiveg_df["Antenna Type"].astype(str).str.upper()
 
-                isidas = antenna_values.str.contains("IDAS", na=False).any()
+                isidas = antenna_values.str.contains("IDAS", na=False).any() -->
 
             # --------------------------------
             # Vonr PRESENCE
