@@ -2514,11 +2514,11 @@ mlcEnabled : {"True" if bw<= 30 else "False"}
                 row = mb_df.loc[mb_df["EutranCellFDDId"] == c].iloc[0]
                 band = str(row["eUTRA operating band"]).upper()
 
-                if "66" in band:
+                if "BAND 66" in band or "BAND66" in band:
                     cell_band[c] = "B66"
-                elif "4" in band:
+                elif "BAND 4" in band or "BAND4" in band:
                     cell_band[c] = "B4"
-                elif "2" in band:
+                elif "BAND 2" in band or "BAND2" in band:
                     cell_band[c] = "B2"
 
             for c in b5_df["EutranCellFDDId"]:
