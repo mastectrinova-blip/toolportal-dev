@@ -1567,7 +1567,10 @@ set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell},UeMeasControl=1,ReportConfigSCellA6=1"
 timeToTriggerA6 : 1024
 
-set
+""")
+
+                if scell_count > 0 and cell not in b29_cells:
+                    script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell}"
 ulHeavyUeDetectEnabled : true
 
