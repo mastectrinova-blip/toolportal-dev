@@ -2756,12 +2756,21 @@ var fgaGen='auto';
 
 var breadcrumbs={audit:'Audit Tool',generator:'Audit Tool / Delta Scripts',kgetall:'Audit Tool / KGetAll Comparison Tool',lockunlock:'Audit Tool / Lock & Unlock',manualcmd:'Audit Tool / Manual Cmd'};
 
-function showPanel(id){
+
+document.addEventListener('DOMContentLoaded', function(){
+  var lastPanel = sessionStorage.getItem('auditTool:lastPanel') || 'audit';
+  showPanel(lastPanel, false); // false = don't re-persist what we just read
+});
+
+
+function showPanel(id, persist){
+  if (persist === undefined) persist = true;
   document.querySelectorAll('.panel').forEach(function(p){p.classList.remove('active');});
   document.querySelectorAll('.nav-item').forEach(function(n){n.classList.remove('active');});
   document.getElementById('panel-'+id).classList.add('active');
   if(document.getElementById('nav-'+id))document.getElementById('nav-'+id).classList.add('active');
   document.getElementById('breadcrumb').textContent=breadcrumbs[id]||'Audit Tool';
+  if (persist) sessionStorage.setItem('auditTool:lastPanel', id);
 }
 
 function toggleScript(key){
@@ -3136,6 +3145,10 @@ async function generate(){
   try {
     var ab=await ciqInput.files[0].arrayBuffer();
     var wb=XLSX.read(ab,{type:'array'});
+	// Validate required sheets
+	var requiredSheets = [ 'Mixed Mode Info', 'eNB Info', 'eUtran Parameters', 'Nokia_Relations(LTE-NR)' ];
+	var missingSheets = requiredSheets.filter(function(name){ return !wb.SheetNames.includes(name); });
+	if(missingSheets.length){ alert('CIQ validation failed. Missing sheet(s): ' + missingSheets.join(', ')); return; }
     var rs=function(name){var s=wb.Sheets[name];return s?XLSX.utils.sheet_to_json(s,{header:1,defval:''}):[]; };
     var folderPath=document.getElementById('folderPath').value.trim();
 
