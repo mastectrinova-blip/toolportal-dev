@@ -1325,12 +1325,7 @@ uplinkCompUeEnabled : True
 
 """)
 
-            if has_lte:
-                script.append(f"""set
-FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},NodeSupport=1,LicenseSupport=1,NetworkLicensing=1"
-euft : <empty>
 
-""")
 
             if is_sa and not has_hb:
                 script.append(f"""set
