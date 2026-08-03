@@ -1251,6 +1251,13 @@ set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,QciTable=default,QciProfilePredefined=default"
 rohcForUlDataEnabled : True
 
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,Rrc=1"
+tRrcConnectionReconfiguration : 15
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,Rcs=1"
+tInactivityTimer : 6
 
 """)
         
@@ -1888,6 +1895,25 @@ FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeB
 a2CriticalThresholdRsrp : -130
 
 """)
+				if cell in mb_l15mhz_cells:
+                    script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell},UeMeasControl=1,ReportConfigA5=1"
+a5Threshold1Rsrq : -160
+
+""")
+
+                elif cell in mb_h15mhz_cells:
+                    script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell},UeMeasControl=1,ReportConfigA5=1"
+a5Threshold1Rsrq : -180
+
+""")
+                else:
+                    script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell},UeMeasControl=1,ReportConfigA5=1"
+a5Threshold1Rsrq : -195
+
+""")
 
 
 
@@ -2299,17 +2325,26 @@ mlcEnabled : {"True" if bw<= 30 else "False"}
 
             # Band 5 cells separated into 5 MHz and non-5 MHz
 
-            b5_5mhz_df = b5_df[b5_df["dlChannelBandwidth"].apply(parse_bw) == 5]
-            b5_non5mhz_df = b5_df[b5_df["dlChannelBandwidth"].apply(parse_bw) != 5]
+            b5_5mhz_df = b5_df[b5_df["dlChannelBandwidth"].apply(parse_bw) == 5000]
+            b5_non5mhz_df = b5_df[b5_df["dlChannelBandwidth"].apply(parse_bw) > 5000]
             
             # Low-band cells = Band 17 + Band 5 (5 MHz only)
             lb_cells = (b17_df["EutranCellFDDId"].tolist()+ b5_5mhz_df["EutranCellFDDId"].tolist())
             # Mid-band cells = B2 + B4 + B66 + B5 (>5 MHz)
             mb5_cells = (mb_df["EutranCellFDDId"].tolist()+ b5_non5mhz_df["EutranCellFDDId"].tolist())
+			
+			mb_h15mhz_df = mb_df[mb_df["dlChannelBandwidth"].apply(parse_bw) >= 15000]
+			mb_l15mhz_df = mb_df[mb_df["dlChannelBandwidth"].apply(parse_bw) < 15000]
+			mb_h15mhz_cells = mb_h15mhz_df["EutranCellFDDId"].tolist()
+			mb_l15mhz_cells = mb_l15mhz_df["EutranCellFDDId"].tolist()
+			
+			
+			b5_cells = b5_df["EutranCellFDDId"].tolist()
+			b5_5mhz_cells = b5_5mhz_df["EutranCellFDDId"].tolist()
+			b5_non5mhz_cells = b5_non5mhz_df["EutranCellFDDId"].tolist()
+			
 
-            mb_cells = mb_df["EutranCellFDDId"].tolist()
             b17_cells = b17_df["EutranCellFDDId"].tolist()
-            b5_cells = b5_df["EutranCellFDDId"].tolist()
             b66_cells = b66_df["EutranCellFDDId"].tolist()
             b14_cells = b14_df["EutranCellFDDId"].tolist()
             b29_cells = b29_df["EutranCellFDDId"].tolist()
