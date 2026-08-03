@@ -1180,8 +1180,17 @@ function AccessDenied({ onBack }) {
 
 function App() {
   const [user, setUser] = useState(null);
-  const [route, setRoute] = useState("dashboard");
-  const [activeTool, setActiveTool] = useState(null);
+  const [route, setRoute] = useState(() => sessionStorage.getItem("trinova:route") || "dashboard");
+  const [activeTool, setActiveTool] = useState(() => {
+    const savedId = sessionStorage.getItem("trinova:toolId");
+    return savedId ? TOOLS.find(t => t.id === savedId) || null : null;
+  });
+
+  useEffect(() => {
+    sessionStorage.setItem("trinova:route", route);
+    if (activeTool) sessionStorage.setItem("trinova:toolId", activeTool.id);
+    else sessionStorage.removeItem("trinova:toolId");
+  }, [route, activeTool]);
 
   function openTool(tool) {
     setActiveTool(tool);
@@ -1245,6 +1254,8 @@ function App() {
 
   async function handleLogout() {
     await sb.auth.signOut();
+    sessionStorage.removeItem("trinova:route");
+    sessionStorage.removeItem("trinova:toolId");
     setUser(null);
     setRoute("dashboard");
   }
