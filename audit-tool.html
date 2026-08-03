@@ -2456,7 +2456,7 @@ mlcEnabled : {"True" if bw<= 30 else "False"}
             )
 
             only_nr_lb = has_nr and bands.eq("850").all()
-            multiple_nr_bands = bands.nunique() > 2
+            multiple_nr_bands = bands.nunique() > 1
             primary_upper_on_cells = set()
 
             # Case 1: No 5G present
