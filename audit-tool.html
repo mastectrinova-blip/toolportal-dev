@@ -1668,10 +1668,6 @@ a1a2SearchThresholdRsrq : -150
 
                 if cell in b29_cells:
                     script.append(f"""set
-FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell},UeMeasControl=1,ReportConfigA5EndcHo=1"
-reportAmountA5 : 0
-
-set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell},UeMeasControl=1"
 bothInterA3RsrpRsrqCheck : false
 
@@ -1703,6 +1699,33 @@ FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeB
 bothInterA3RsrpRsrqCheck : True
 
 """)
+                if lte_anchor and only_nr_lb:
+                    if cell in b29_cells or cell in b14_cells:
+                        script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell},UeMeasControl=1,ReportConfigA5EndcHo=1"
+reportAmountA5 : 0
+
+""")
+                    else:
+                        script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell},UeMeasControl=1,ReportConfigA5EndcHo=1"
+reportAmountA5 : 8
+
+""")
+                else:
+                    if cell in b29_cells:
+                        script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell},UeMeasControl=1,ReportConfigA5EndcHo=1"
+reportAmountA5 : 0
+
+""")
+                    else:
+                        script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell},UeMeasControl=1,ReportConfigA5EndcHo=1"
+reportAmountA5 : 8
+
+"""
+)
 
 
                 if cell in lb_cells or cell in b14_cells or cell in b29_cells:
