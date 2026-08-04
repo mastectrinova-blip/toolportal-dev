@@ -2649,6 +2649,464 @@ mlcEnabled : {"True" if bw<= 30 else "False"}
             except:
                 pass</script>
 
+<!-- cmedit commands  -->
+<script id="cmedit" type="text/plain">import pandas as pd
+import re
+import os
+
+from openpyxl import load_workbook
+
+from excel_repair import get_usable_excel_path
+
+def parse_bw(bandwidth):
+    try:
+        if bandwidth is None:
+            return None
+
+        val = str(bandwidth).strip()
+
+        if val == "" or val.lower() in ["nan", "none", "n/a"]:
+            return None
+
+        # take first part before "/"
+        val = val.split("/")[0].strip()
+
+        return int(float(val))
+
+    except:
+        return None
+
+def is_slim(bandwidth):
+    if bandwidth is None:
+        return False
+
+    return "/6400" in str(bandwidth).replace(" ", "")
+
+
+
+def evaluate_sheet(df, col_name):
+    if df is None or df.empty or col_name not in df.columns:
+        return False, False  
+    
+    # has_data, is_7digit_valid
+    series = df[col_name].astype(str).str.strip()
+    valid = series[series.ne("") & series.notna()]
+
+    has_data = not valid.empty
+    is_7digit = has_data and valid.str.match(r"^\d{7}$", na=False).any()
+
+    return has_data, is_7digit
+
+
+def cmedit_generator(excel_file,node_options):
+
+    usable_excel_path, repaired_excel_temp = get_usable_excel_path(excel_file)
+    
+    try:
+
+        all_site_outputs = {}   # ✅ NEW
+        
+
+        # -----------------------------
+        # Helper Functions (UNCHANGED)
+        # -----------------------------
+        def normalize_id(col):
+            return col.apply(lambda x: str(int(x)) if pd.notna(x) else "")
+
+        def load_excel():
+            xls = pd.ExcelFile(usable_excel_path, engine="openpyxl")
+            is_rds = "IRU - DOT conenction" in xls.sheet_names
+
+            sheets = pd.read_excel(
+                xls,
+                sheet_name=[
+                    "Mixed Mode Info",
+                    "5G Info",
+                    "eUtran Parameters",
+                    "eNB Info",
+                    "gNB Info",
+                    "LTE-NR- FreqRelation",
+                    "Nokia_Relations(LTE-NR)"
+                ],
+                engine="openpyxl"
+            )
+
+            mixed = sheets["Mixed Mode Info"]
+            fiveg = sheets["5G Info"]
+            lte = sheets["eUtran Parameters"]
+            enb = sheets["eNB Info"]
+            gnb = sheets["gNB Info"]
+            la_c = sheets["LTE-NR- FreqRelation"]
+            la_n = sheets["Nokia_Relations(LTE-NR)"]
+
+
+
+            for df in [mixed, fiveg, lte, enb, gnb,la_c,la_n]:
+                df.columns = df.columns.str.strip()
+
+            mixed["eNBId"] = normalize_id(mixed["eNBId"])
+            mixed["gNBId"] = normalize_id(mixed["gNBId"])
+            lte["eNBId"] = normalize_id(lte["eNBId"])
+            fiveg["gNBId"] = normalize_id(fiveg["gNBId"])
+            enb["eNBId"] = normalize_id(enb["eNBId"])
+            gnb["gNBId"] = normalize_id(gnb["gNBId"])
+            la_c["GutranFreqRelationID"] = normalize_id(la_c["GutranFreqRelationID"])
+            la_n["GutranFreqRelationID"] = normalize_id(la_n["GutranFreqRelationID"])
+
+                            # 🔥 FILTER ONLY SA
+            sa = pd.DataFrame()
+            if "NSA/SA" in fiveg.columns:
+                fiveg["NSA/SA"] = fiveg["NSA/SA"].astype(str).str.strip().str.upper()
+                sa = fiveg[fiveg["NSA/SA"] == "SA"]
+
+
+            is_3radio = "RRU Type" in fiveg.columns and fiveg["RRU Type"].astype(str).str.contains(r"AIR6419|AIR6449|AIR6472", case=False, na=False).any()
+
+            is_4890radio = "RRU type" in lte.columns and lte["RRU type"].astype(str).str.contains(r"4890", case=False, na=False).any()
+            is_4402radio = "RRU type" in lte.columns and lte["RRU type"].astype(str).str.contains(r"4402", case=False, na=False).any()
+            is_2203radio = "RRU type" in lte.columns and lte["RRU type"].astype(str).str.contains(r"2203", case=False, na=False).any()
+
+            
+            sa_clean = fiveg.set_index("NRCellDU")["NSA/SA"].astype(str).str.strip().str.upper()
+            
+            return  mixed, fiveg, lte, enb, gnb, is_rds, sa, sa_clean, is_3radio, is_4890radio, is_4402radio, is_2203radio, la_n, la_c
+
+        mixed_df, fiveg_df, lte_df, enb_df, gnb_df, is_rds, sa_df, sa_clean, is_3radio, is_4890radio, is_4402radio, is_2203radio, la_n, la_c = load_excel()
+
+
+
+        # idas = node_options.get("iDAS", False)
+        # node_bands = node_options.get("NODE_BANDS", {})
+        
+        la_n_has, la_n_hb = evaluate_sheet(la_n, "GutranFreqRelationID")
+        la_c_has, la_c_hb = evaluate_sheet(la_c, "GutranFreqRelationID")
+
+        lte_anchor = la_n_has or la_c_has
+
+        lte_anchor_hb = ((la_n_has and la_n_hb) or (la_c_has and la_c_hb))
+
+
+    ###    # -----------------------------Delta Here-----------------------------
+        
+        def delta_script(siteid):
+            script = []
+
+            script.append(f"cmedit set {siteid} EUtranFreqRelation cellReselectionPriorityBr=7")
+            script.append(f"cmedit set {siteid} EUtranCellRelation qOffsetCellEUtran=0")
+
+            for ssb in sa_fdd_ssb:
+                script.append(f"cmedit set {siteid} GUtranFreqRelation={ssb}-15-20-0-2 threshXHighQ=2")
+                script.append(f"cmedit set {siteid} NRFreqRelation={ssb}-15-20-0-2 threshXLowQ=3")
+        
+            script.append(f"cmedit set {siteid} RATFreqPrio=36 spidList=[-1000]")
+            script.append(f"cmedit set {siteid} ExternalGUtranCell=310410-000000{gNBId}* isRemoveAllowed=false")
+
+            for _,r in site_lte_df.iterrows():
+                cell = r.get("EutranCellFDDId")
+                if cell in b14_cells:
+                    script.append(f"cmedit set {siteid} EUtranCellFDD.(EUtranCellFDDId=={cell}), EUtranFreqRelation EUtranFreqRelation.lbActivationThreshold:1500")
+
+                if cell in b17_cells and not b29_df.empty:
+                    for earfcn in b29_earfcn:
+                        script.append(f"cmedit set {siteid} EUtranCellFDD.(EUtranCellFDDId=={cell}), EUtranFreqRelation.(EUtranFreqRelationId=={earfcn}) EUtranFreqRelation.tReselectionEutra=4")
+
+            if not n77:
+                for ssb in inter_n77:
+                    script.append(f"cmedit set {siteid} GUtranFreqRelation={ssb}-30-20-0-1 b1ThrRsrpFreqOffset=0")
+
+
+            for _,r in site_lte_df.iterrows():
+                sc = r.get("sectorId")
+                script.append(f"cmedit set SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,SectorCarrier={sc} microSleepTxEnabled : true")
+            
+
+            return script
+
+
+
+    ###   # -----------------------------end-------------------------------------
+
+
+
+            # ------------------------------------------------------------------------------------------------
+            # MAIN LOOP
+            # ------------------------------------------------------------------------------------------------
+
+        isdas = "DAS" in str(enb_df["Structure Type"].iloc[0]).upper()
+        isidas = False
+  
+        for _, row in mixed_df.iterrows():
+
+            siteid = row.get("Node to be built as")
+            is_idle = str(row["IDLA"]).strip().upper() not in ["", "N/A", "NA", "NO", "NONE", "NAN"]
+            # fn_sa = (node_bands.get(str(siteid), {}).get("FN_SA", False))
+            eNBId = row.get("eNBId")
+            gNBId = row.get("gNBId")
+
+            G2_suffixes = ("5216", "6630")
+            G3_suffixes = ("6651", "6648", "6339", "6337", "6507")
+            g2_pattern = "|".join(G2_suffixes)
+            g3_pattern = "|".join(G3_suffixes)
+
+            site_enb_df = enb_df[enb_df["eNBId"] == eNBId]
+            site_gnb_df = gnb_df[gnb_df["gNBId"] == gNBId]
+
+
+            is_lte_g2 = (site_enb_df["DU type"].astype(str).str.contains(g2_pattern, na=False).any())
+            is_lte_g3 = (site_enb_df["DU type"].astype(str).str.contains(g3_pattern, na=False).any())
+
+            is_fg_g2 = (site_gnb_df["DU type"].astype(str).str.contains(g2_pattern, na=False).any())
+            is_fg_g3 = (site_gnb_df["DU type"].astype(str).str.contains(g3_pattern, na=False).any())
+
+
+            
+            if pd.isna(siteid):
+                continue
+
+            site_output_lines = []
+
+            # --------------------------------
+            # VALIDATE IDs
+            # --------------------------------
+            eNB_valid = (
+            pd.notna(eNBId)
+            and str(eNBId).strip() != ""
+            and str(eNBId).strip().lower() != "nan"
+            )
+
+            gNB_valid = (
+            pd.notna(gNBId)
+            and str(gNBId).strip() != ""
+            and str(gNBId).strip().lower() != "nan"
+            )
+
+            # --------------------------------
+            # FILTER DATA
+            # --------------------------------
+            if eNB_valid:
+                site_lte_df = lte_df[lte_df["eNBId"] == eNBId]
+            else:
+                site_lte_df = lte_df.iloc[0:0]
+
+            if gNB_valid:
+                site_fg_df = fiveg_df[fiveg_df["gNBId"] == gNBId]
+                site_sa_df = sa_df[sa_df["gNBId"] == gNBId]
+            else:
+                site_fg_df = fiveg_df.iloc[0:0]
+                site_sa_df = sa_df.iloc[0:0]
+
+
+            # ------------------------------------------------------------------------------------------------
+            # Suffix related PRESENCE
+            # ------------------------------------------------------------------------------------------------
+
+
+            # --------------------------------
+            # n77 PRESENCE
+            # --------------------------------
+            
+
+
+
+            site_n77 = site_fg_df[site_fg_df["NRCellDU"].astype(str).str.contains("N077", case=False, na=False)]
+            site_n260 = site_fg_df[site_fg_df["NRCellDU"].astype(str).str.contains("N260", case=False, na=False)]
+            site_non_n77 = site_fg_df[~site_fg_df["NRCellDU"].astype(str).str.contains("N077|N260", case=False, na=False)]
+            has_n77 = not site_n77.empty
+            has_non_n77 = not site_non_n77.empty
+            has_hb = not site_n260.empty
+
+
+            # --------------------------------
+            # Bandwidth Classification
+            # --------------------------------
+            if (not site_non_n77.empty and "bSChannelBwDL" in site_non_n77.columns):
+                
+                bw_numeric = pd.to_numeric(site_non_n77["bSChannelBwDL"], errors="coerce")
+                bw_below_10Mhz = site_non_n77[bw_numeric < 10]
+                bw_10Mhz_or_above = site_non_n77[bw_numeric >= 10]
+            else:
+                bw_below_10Mhz = site_non_n77.iloc[0:0]
+                bw_10Mhz_or_above = site_non_n77.iloc[0:0]
+
+
+
+            no_n77 = len(site_n77)
+            has_bw_below_10Mhz = not bw_below_10Mhz.empty
+            has_bw_10Mhz_or_above = not bw_10Mhz_or_above.empty
+
+
+
+            # --------------------------------
+            # ACTUAL NODE PRESENCE
+            # --------------------------------
+            has_lte = not site_lte_df.empty
+
+            has_nr = not site_fg_df.empty
+
+            # --------------------------------
+            # SA PRESENCE
+            # --------------------------------
+
+            is_sa = not site_sa_df.empty
+
+            # --------------------------------
+            # iDAS PRESENCE
+            # --------------------------------
+            idas_pattern = r"(_D|_B|_DB|_BD)$"
+            lte_idas = lte_df["EutranCellFDDId"].astype(str).str.upper().str.contains(idas_pattern, regex=True, na=False).any()
+            nr_idas = fiveg_df["NRCellDU"].astype(str).str.upper().str.contains(idas_pattern, regex=True, na=False).any()
+
+
+            isidas = isdas and (lte_idas or nr_idas)
+
+            # --------------------------------
+            # Vonr PRESENCE
+            # --------------------------------
+
+            if gNB_valid and "VoNR" in site_fg_df.columns:
+                is_vonr = (site_fg_df["VoNR"].astype(str).str.strip().str.upper().eq("YES").any())
+            else:
+                is_vonr = False
+
+            # --------------------------------
+            # cells
+            # --------------------------------
+
+            b2_df = site_lte_df[site_lte_df["eUTRA operating band"].astype(str).str.contains(r"Band\s*2\b", case=False, na=False)]
+            b4_df = site_lte_df[site_lte_df["eUTRA operating band"].astype(str).str.contains(r"Band\s*4\b", case=False, na=False)]
+            b66_df = site_lte_df[site_lte_df["eUTRA operating band"].astype(str).str.contains(r"Band\s*66\b", case=False, na=False)]
+
+
+
+            b5_df = site_lte_df[site_lte_df["eUTRA operating band"].astype(str).str.contains(r"Band\s*5\b",case=False,na=False)]
+            b17_df = site_lte_df[site_lte_df["eUTRA operating band"].astype(str).str.contains(r"Band\s*17\b",case=False,na=False)]
+            b14_df = site_lte_df[site_lte_df["eUTRA operating band"].astype(str).str.contains(r"Band\s*14\b",case=False,na=False)]
+            b29_df = site_lte_df[site_lte_df["eUTRA operating band"].astype(str).str.contains(r"Band\s*29\b",case=False,na=False)]
+            b30_df = site_lte_df[site_lte_df["eUTRA operating band"].astype(str).str.contains(r"Band\s*30\b",case=False,na=False)]
+
+            mb_df = pd.concat([b2_df, b4_df, b66_df], ignore_index=True)
+
+            # Band 5 cells separated into 5 MHz and non-5 MHz
+
+            b5_5mhz_df = b5_df[b5_df["dlChannelBandwidth"].apply(parse_bw) == 5000]
+            b5_non5mhz_df = b5_df[b5_df["dlChannelBandwidth"].apply(parse_bw) > 5000]
+            
+            # Low-band cells = Band 17 + Band 5 (5 MHz only)
+            lb_cells = (b17_df["EutranCellFDDId"].tolist()+ b5_5mhz_df["EutranCellFDDId"].tolist())
+            # Mid-band cells = B2 + B4 + B66 + B5 (>5 MHz)
+            mb5_cells = (mb_df["EutranCellFDDId"].tolist()+ b5_non5mhz_df["EutranCellFDDId"].tolist())
+
+            mb_h15mhz_df = mb_df[mb_df["dlChannelBandwidth"].apply(parse_bw) >= 15000]
+            mb_l15mhz_df = mb_df[mb_df["dlChannelBandwidth"].apply(parse_bw) < 15000]
+            mb_h15mhz_cells = mb_h15mhz_df["EutranCellFDDId"].tolist()
+            mb_l15mhz_cells = mb_l15mhz_df["EutranCellFDDId"].tolist()
+            b5_cells = b5_df["EutranCellFDDId"].tolist()
+            b5_5mhz_cells = b5_5mhz_df["EutranCellFDDId"].tolist()
+            b5_non5mhz_cells = b5_non5mhz_df["EutranCellFDDId"].tolist()
+            b17_cells = b17_df["EutranCellFDDId"].tolist()
+            b66_cells = b66_df["EutranCellFDDId"].tolist()
+            b14_cells = b14_df["EutranCellFDDId"].tolist()
+            b29_cells = b29_df["EutranCellFDDId"].tolist()
+            b30_cells = b30_df["EutranCellFDDId"].tolist()
+
+
+            #-------------------------------------------------------------------
+            #          Cell Flags
+            #-------------------------------------------------------------------
+
+            n77 = fiveg_df["NRCellDU"].astype(str).str.contains("N077", case=False, na=False).any()
+            b17 = lte_df["eUTRA operating band"].astype(str).str.contains(r"Band\s*17\b", case=False, na=False).any()
+            b5_5mhz = (lte_df["eUTRA operating band"].astype(str).str.contains(r"Band\s*5\b", case=False, na=False) & (lte_df["dlChannelBandwidth"].apply(parse_bw) == 5)).any()
+            b14 = lte_df["eUTRA operating band"].astype(str).str.contains(r"Band\s*14\b", case=False, na=False).any()
+            mb_usid = lte_df["eUTRA operating band"].astype(str).str.contains(r"Band\s*(?:2|4|66)\b", case=False, na=False).any()
+            lb_usid = b17 or b5_5mhz
+
+            iscran = lte_df["EutranCellFDDId"].astype(str).str.contains(r"_R0", case=False, na=False).any()
+            hicap = not lte_df["High Capacity Site"].astype(str).str.strip().str.contains(r"^(?:NO|NA|N/A)$", case=False, na=False).any()
+
+            #-------------------------------------------------------------------
+            #           Cellids and others
+            #-------------------------------------------------------------------
+
+
+            b14_cellids = (b14_df["cellId"].dropna().astype(int).tolist())
+            b14_cellids_str = f"[{','.join(map(str, b14_cellids))}]"
+
+            b29_earfcn = (b29_df["earfcnDl"].dropna().astype(int).unique().tolist())
+
+            # --------------------------------
+            # SA NR-FDD SSBs
+            # --------------------------------
+            sa_fdd_ssb = []
+            for _, sa_row in site_sa_df.iterrows():
+                cell = sa_row.get("NRCellDU")
+                if cell in site_n77["NRCellDU"].values:
+                    continue  # Skip if the cell is already in site_n77
+                ssb = sa_row.get("ssbFrequency")
+                if ssb not in sa_fdd_ssb:
+                    sa_fdd_ssb.append(ssb)
+
+            # --------------------------------
+            # Interusid n77 SSBs
+            # --------------------------------
+
+            inter_n77 = []
+            inter_n77 = ( pd.concat([ la_n["GutranFreqRelationID"], la_c["GutranFreqRelationID"] ]) .astype(str) .loc[lambda s: s.str.startswith("6", na=False)] .dropna() .unique() .tolist() )
+
+
+
+            # ------------------------------------------------------------------------------------------------
+            # CLASSIFY NODE TYPE
+            # ------------------------------------------------------------------------------------------------
+            if has_lte and has_n77 and has_non_n77:
+                resolved_type = "tmbb"
+
+            elif has_lte and (has_n77 or has_non_n77):
+                resolved_type = "mmbb"
+
+            elif has_nr:
+                resolved_type = "nr"
+
+            elif has_lte:
+                resolved_type = "lte"
+
+            else:
+                resolved_type = "unknown"
+
+            print(siteid, "->", resolved_type)
+
+
+            # ------------------------------------------------------------------------------------------------
+            # GENERATE SCRIPTS
+            # ------------------------------------------------------------------------------------------------
+            if resolved_type == "tmbb":
+                site_output_lines.extend(delta_script(siteid))
+
+            elif resolved_type == "mmbb":
+                site_output_lines.extend(delta_script(siteid))
+
+            elif resolved_type == "nr":
+                site_output_lines.extend(delta_script(siteid))
+
+            elif resolved_type == "lte":
+                site_output_lines.extend(delta_script(siteid))
+
+            # ------------------------------------------------------------------------------------------------
+            # STORE OUTPUT
+            # ------------------------------------------------------------------------------------------------
+            if site_output_lines:
+                all_site_outputs[siteid] = (f"{siteid}_cmedit_commands.txt","\n".join(site_output_lines))
+        return all_site_outputs
+
+    finally:
+        if repaired_excel_temp and usable_excel_path:
+            try:
+                os.remove(usable_excel_path)
+            except:
+                pass</script>
+
+
+
 <!-- excel_repair.py (verbatim, used by NDS_con.py to auto-fix corrupt CIQ stylesheets) -->
 <script id="PY_EXCEL_REPAIR" type="text/plain">import os
 import zipfile
@@ -3173,10 +3631,12 @@ function ensurePyodide(){
     await pyodide.loadPackage(['pandas','micropip']);
     await pyodide.runPythonAsync('import micropip\nawait micropip.install("openpyxl")');
     var pySrc=document.getElementById('PY_NDS_CON').textContent;
+	var cmeditSrc=document.getElementById('cmedit').textContent;   // NEW
     var repairSrc=document.getElementById('PY_EXCEL_REPAIR').textContent;
     pyodide.FS.writeFile('/excel_repair.py', repairSrc);
     pyodide.FS.writeFile('/NDS_con.py', pySrc);
-    await pyodide.runPythonAsync('import sys\nif "/" not in sys.path: sys.path.insert(0, "/")\nfrom NDS_con import NDS_delta_generator');
+	pyodide.FS.writeFile('/cmedit.py', cmeditSrc);
+	await pyodide.runPythonAsync('import sys\nif "/" not in sys.path: sys.path.insert(0, "/")\nfrom NDS_con import NDS_delta_generator\nfrom cmedit import cmedit_generator');
     return pyodide;
   })();
   return pyodideReadyPromise;
@@ -3395,7 +3855,19 @@ async function generate(){
         var pair=resultObj[siteKeys[si]]; // [filename, content]
         await addDl(pair[1], pair[0], 'NDS Delta Script ('+siteKeys[si]+')');
       }
-    }
+
+	
+	 // NEW: run cmedit_generator too, save as a separate file per site
+	 bt.textContent='Running cmedit commands...';
+	 var cmeditProxy=await pyodide.runPythonAsync('cmedit_generator(excel_path_js, node_options_js)');
+	 var cmeditObj=cmeditProxy.toJs({dict_converter: Object.fromEntries});
+	 cmeditProxy.destroy();
+	 var cmeditKeys=Object.keys(cmeditObj);
+	 for(var ci=0;ci<cmeditKeys.length;ci++){
+		 var cpair=cmeditObj[cmeditKeys[ci]]; // [filename, content] -> "<siteid>_cmedit_commands.txt"
+		 await addDl(cpair[1], cpair[0], 'cmedit Commands ('+cmeditKeys[ci]+')');
+	 }
+ }
 
 
     var folder=pickedFolderHandle?pickedFolderHandle.name:'Downloads';
