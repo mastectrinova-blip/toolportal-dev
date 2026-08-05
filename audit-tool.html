@@ -247,6 +247,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
       <div class="nav-item sub" id="nav-lockunlock" onclick="showPanel('lockunlock')">&#128274; Lock / Unlock</div>
       <div class="nav-item sub" id="nav-manualcmd" onclick="showPanel('manualcmd')">&#128221; Manual Cmd</div>
       <div class="nav-item sub" id="nav-kgetall" onclick="showPanel('kgetall')">&#128203; KGetAll Comparison Tool</div>
+      <div class="nav-item sub" id="nav-nrarea" onclick="showPanel('nrarea')">&#128196; NR AREA Processing Tool</div>
     </div>
     <div class="sidebar-footer">
       <button class="back-btn" onclick="trinovaBackToPortal()">
@@ -263,7 +264,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
     <!-- AUDIT -->
     <div class="panel active" id="panel-audit">
       <div class="home-welcome"><h2>&#128269; Audit Tool</h2><p>Select a module to continue</p></div>
-      <div class="sub-menu-grid" style="grid-template-columns:1fr 1fr 1fr 1fr;">
+      <div class="sub-menu-grid" style="grid-template-columns:1fr 1fr 1fr 1fr 1fr;">
         <div class="sub-menu-card" onclick="showPanel('generator')">
           <div class="sub-menu-card-icon">&#9889;</div>
           <div class="sub-menu-card-name">Delta Scripts</div>
@@ -282,6 +283,11 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
         <div class="sub-menu-card" onclick="showPanel('kgetall')">
           <div class="sub-menu-card-icon">&#128203;</div>
           <div class="sub-menu-card-name">KGetAll Comparison Tool</div>
+          <div class="sub-menu-card-arrow">Open &#8594;</div>
+        </div>
+        <div class="sub-menu-card" onclick="showPanel('nrarea')">
+          <div class="sub-menu-card-icon">&#128196;</div>
+          <div class="sub-menu-card-name">NR AREA Processing Tool</div>
           <div class="sub-menu-card-arrow">Open &#8594;</div>
         </div>
       </div>
@@ -557,6 +563,69 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
           <div id="manualCmdOutput" style="background:var(--bg);border:1.5px solid var(--border);border-radius:8px;padding:16px;font-family:var(--mono);font-size:12px;line-height:1.8;max-height:420px;overflow-y:auto;white-space:pre-wrap;">
             <div style="text-align:center;padding:1.5rem;color:var(--muted);font-size:13px;">Upload a CIQ above, then add a command</div>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- NR AREA PROCESSING TOOL -->
+    <div class="panel" id="panel-nrarea" style="max-width:800px">
+      <div class="home-welcome"><h2>&#128196; NR AREA Processing Tool</h2><p>Convert Area Lite scripts using CIQ data</p></div>
+
+      <div class="gen-section">
+        <div class="section-card">
+
+          <!-- Conversion Type -->
+          <div style="margin-bottom:22px;">
+            <div class="section-title" style="margin-bottom:10px;">Conversion Type</div>
+            <select id="nrarea_convType" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;color:var(--text);background:#fff;outline:none;cursor:pointer;">
+              <option>Cleaned AREA LITE conversion</option>
+            </select>
+          </div>
+
+          <!-- View Parameters Covered -->
+          <div style="margin-bottom:22px;">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+              <input type="checkbox" id="nrarea_showParams" onchange="nrareaToggleParams()" style="width:16px;height:16px;cursor:pointer;accent-color:var(--accent);">
+              <label for="nrarea_showParams" style="font-size:13px;font-weight:600;color:var(--text);cursor:pointer;margin:0;">View Parameters Covered</label>
+            </div>
+            <div id="nrarea_paramsBox" style="display:none;background:#f0f6ff;border:1px solid var(--border);border-radius:8px;padding:12px;display:none;flex-wrap:wrap;gap:8px;margin-top:4px;">
+              <span style="background:#e1f0fa;color:#31708f;padding:5px 12px;border-radius:12px;font-size:12px;font-weight:600;border:1px solid #bce8f1;">cellReselectionPriority</span>
+              <span style="background:#e1f0fa;color:#31708f;padding:5px 12px;border-radius:12px;font-size:12px;font-weight:600;border:1px solid #bce8f1;">threshXLowQ (LTE)</span>
+              <span style="background:#e1f0fa;color:#31708f;padding:5px 12px;border-radius:12px;font-size:12px;font-weight:600;border:1px solid #bce8f1;">threshXHighQ</span>
+              <span style="background:#e1f0fa;color:#31708f;padding:5px 12px;border-radius:12px;font-size:12px;font-weight:600;border:1px solid #bce8f1;">threshXLowQ (NR)</span>
+              <span style="background:#e1f0fa;color:#31708f;padding:5px 12px;border-radius:12px;font-size:12px;font-weight:600;border:1px solid #bce8f1;">tReselectionEutra</span>
+            </div>
+          </div>
+
+          <!-- Input File: Area Lite Script -->
+          <div style="margin-bottom:18px;">
+            <div class="section-title" style="margin-bottom:8px;">Input Files* <span style="font-weight:400;font-size:12px;color:var(--muted);">(Area Lite Script)</span></div>
+            <div style="display:flex;align-items:stretch;">
+              <div id="nrarea_scriptText" style="flex:1;padding:9px 12px;border:1.5px solid var(--border);border-right:none;border-radius:8px 0 0 8px;font-size:13px;color:var(--muted);background:#fcfcfc;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">No file selected</div>
+              <button onclick="document.getElementById('nrarea_scriptFile').click()" style="background:#5bc0de;color:white;border:1px solid #46b8da;border-radius:0 8px 8px 0;padding:0 18px;font-size:20px;font-weight:bold;cursor:pointer;transition:background 0.15s;" onmouseover="this.style.background='#31b0d5'" onmouseout="this.style.background='#5bc0de'">+</button>
+              <input type="file" id="nrarea_scriptFile" accept=".txt,.mos" style="display:none;">
+            </div>
+          </div>
+
+          <!-- Input File: CIQ Excel -->
+          <div style="margin-bottom:22px;">
+            <div class="section-title" style="margin-bottom:8px;">Site Logs* <span style="font-weight:400;font-size:12px;color:var(--muted);">(CIQ Excel)</span></div>
+            <div style="display:flex;align-items:stretch;">
+              <div id="nrarea_ciqText" style="flex:1;padding:9px 12px;border:1.5px solid var(--border);border-right:none;border-radius:8px 0 0 8px;font-size:13px;color:var(--muted);background:#fcfcfc;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">No file selected</div>
+              <button onclick="document.getElementById('nrarea_ciqFile').click()" style="background:#5bc0de;color:white;border:1px solid #46b8da;border-radius:0 8px 8px 0;padding:0 18px;font-size:20px;font-weight:bold;cursor:pointer;transition:background 0.15s;" onmouseover="this.style.background='#31b0d5'" onmouseout="this.style.background='#5bc0de'">+</button>
+              <input type="file" id="nrarea_ciqFile" accept=".xlsx,.xls" style="display:none;">
+            </div>
+          </div>
+
+          <!-- Action Buttons -->
+          <div style="display:flex;gap:10px;margin-top:8px;">
+            <button class="gen-btn-main" id="nrarea_convertBtn" onclick="nrareaProcessConversion()" disabled style="flex:0 0 auto;width:auto;padding:10px 28px;font-size:13px;height:auto;box-shadow:none;background:#555;cursor:not-allowed;">Convert Scripts</button>
+            <button onclick="nrareaReset()" style="padding:10px 20px;font-size:13px;font-weight:600;border-radius:8px;cursor:pointer;border:1.5px solid var(--border);background:#f4f4f4;color:var(--text);display:flex;align-items:center;gap:6px;transition:background 0.15s;" onmouseover="this.style.background='#e0e0e0'" onmouseout="this.style.background='#f4f4f4'">&#10006; Cancel</button>
+          </div>
+
+          <!-- Status Message -->
+          <div id="nrarea_status" style="display:none;margin-top:18px;font-size:13px;font-weight:600;padding:12px;border-radius:8px;"></div>
+
         </div>
       </div>
     </div>
@@ -3258,7 +3327,7 @@ function trinovaBackToPortal() {
 var sel={fga:false,nds:false};
 var fgaGen='auto';
 
-var breadcrumbs={audit:'Audit Tool',generator:'Audit Tool / Delta Scripts',kgetall:'Audit Tool / KGetAll Comparison Tool',lockunlock:'Audit Tool / Lock & Unlock',manualcmd:'Audit Tool / Manual Cmd'};
+var breadcrumbs={audit:'Audit Tool',generator:'Audit Tool / Delta Scripts',kgetall:'Audit Tool / KGetAll Comparison Tool',lockunlock:'Audit Tool / Lock & Unlock',manualcmd:'Audit Tool / Manual Cmd',nrarea:'Audit Tool / NR AREA Processing Tool'};
 
 
 document.addEventListener('DOMContentLoaded', function(){
@@ -4278,6 +4347,109 @@ function luDownload(){
   a.href=URL.createObjectURL(new Blob([t],{type:'text/plain'}));
   a.download=fn;a.click();
 }
+
+// ===== NR AREA PROCESSING TOOL =====
+(function(){
+  var nrarea_scriptTextData=null,nrarea_ciqWorkbookData=null,nrarea_scriptFileName='';
+
+  document.getElementById('nrarea_scriptFile').addEventListener('change',function(e){
+    var f=e.target.files[0];if(!f)return;
+    nrarea_scriptFileName=f.name;
+    var el=document.getElementById('nrarea_scriptText');el.textContent=f.name;el.style.color='var(--text)';el.style.fontWeight='600';
+    var reader=new FileReader();reader.onload=function(ev){nrarea_scriptTextData=ev.target.result;nrareaCheckReady();};reader.readAsText(f);
+  });
+
+  document.getElementById('nrarea_ciqFile').addEventListener('change',function(e){
+    var f=e.target.files[0];if(!f)return;
+    var el=document.getElementById('nrarea_ciqText');el.textContent=f.name;el.style.color='var(--text)';el.style.fontWeight='600';
+    var reader=new FileReader();reader.onload=function(ev){try{nrarea_ciqWorkbookData=XLSX.read(ev.target.result,{type:'array'});nrareaCheckReady();}catch(err){nrareaShowStatus('Error parsing CIQ file.',false);}};reader.readAsArrayBuffer(f);
+  });
+
+  window.nrareaCheckReady=function(){
+    var btn=document.getElementById('nrarea_convertBtn'),ready=!!(nrarea_scriptTextData&&nrarea_ciqWorkbookData);
+    btn.disabled=!ready;btn.style.background=ready?'linear-gradient(135deg,#2563eb,#1d4ed8)':'#555';btn.style.cursor=ready?'pointer':'not-allowed';btn.style.boxShadow=ready?'0 4px 12px rgba(37,99,235,0.3)':'none';
+  };
+  window.nrareaToggleParams=function(){
+    var box=document.getElementById('nrarea_paramsBox'),checked=document.getElementById('nrarea_showParams').checked;box.style.display=checked?'flex':'none';
+  };
+  window.nrareaReset=function(){
+    nrarea_scriptTextData=null;nrarea_ciqWorkbookData=null;nrarea_scriptFileName='';
+    document.getElementById('nrarea_scriptFile').value='';document.getElementById('nrarea_ciqFile').value='';
+    var st=document.getElementById('nrarea_scriptText');st.textContent='No file selected';st.style.color='var(--muted)';st.style.fontWeight='normal';
+    var ct=document.getElementById('nrarea_ciqText');ct.textContent='No file selected';ct.style.color='var(--muted)';ct.style.fontWeight='normal';
+    document.getElementById('nrarea_showParams').checked=false;document.getElementById('nrarea_paramsBox').style.display='none';document.getElementById('nrarea_status').style.display='none';
+    nrareaCheckReady();
+  };
+  window.nrareaShowStatus=function(msg,isSuccess){
+    var div=document.getElementById('nrarea_status');div.textContent=msg;div.style.display='block';
+    if(isSuccess){div.style.background='#dff0d8';div.style.color='#3c763d';div.style.border='1px solid #d6e9c6';}
+    else{div.style.background='#f2dede';div.style.color='#a94442';div.style.border='1px solid #ebccd1';}
+  };
+  window.nrareaProcessConversion=function(){
+    nrareaShowStatus('Processing...',true);
+    try{
+      var blocks=nrareaParseScript(nrarea_scriptTextData);
+      if(!blocks.length)throw new Error('No valid command blocks found in script.');
+      var ciqData=nrareavParseCIQ(nrarea_ciqWorkbookData);
+      nrareaRunRulesAndDownload(blocks,ciqData);
+    }catch(err){nrareaShowStatus('Error: '+err.message,false);console.error(err);}
+  };
+
+  function nrareaParseScript(text){
+    var blocks=[],raw=text.replace(/\r\n/g,'\n'),chunks=raw.split(/\n\s*\n/);
+    for(var i=0;i<chunks.length;i++){
+      var chunk=chunks[i],lines=chunk.split('\n').map(function(l){return l.trim();}).filter(function(l){return l&&!l.startsWith('//')&&!l.startsWith('!');});
+      if(lines.length<2)continue;
+      var fdnLine=lines.find(function(l){return l.toUpperCase().includes('FDN');});if(!fdnLine)continue;
+      var fdnMatch=fdnLine.match(/FDN\s*:\s*"([^"]+)"/i);if(!fdnMatch)continue;
+      var fdn=fdnMatch[1],paramLine=lines.find(function(l){return !l.toUpperCase().includes('FDN')&&l.includes(':');});if(!paramLine)continue;
+      var ci=paramLine.indexOf(':'),paramName=paramLine.substring(0,ci).replace(/^set\s+/i,'').trim(),paramValue=paramLine.substring(ci+1).trim();
+      var parts={};fdn.split(',').forEach(function(seg){var eq=seg.indexOf('=');if(eq>-1)parts[seg.substring(0,eq).trim()]=seg.substring(eq+1).trim();});
+      var moClasses=['GUtranFreqRelation','EUtranFreqRelation','NRFreqRelation','EUtranCellFDD','NRCellCU','NRCellDU','ENodeBFunction','GNBCUCPFunction','SubscriberProfileID','RATFreqPrio'],objType='';
+      for(var j=0;j<moClasses.length;j++){if(parts[moClasses[j]]!==undefined){objType=moClasses[j];break;}}
+      var srcCell=parts['EUtranCellFDD']||parts['NRCellCU']||parts['NRCellDU']||'',relId=parts['GUtranFreqRelation']||parts['EUtranFreqRelation']||parts['NRFreqRelation']||'',relArfcn=relId.split('-')[0];
+      blocks.push({raw:chunk.trim(),fdn:fdn,paramName:paramName,paramValue:paramValue,parsed:{_objectType:objType,_sourceCell:srcCell,_relationArfcn:relArfcn}});
+    }
+    return blocks;
+  }
+
+  function nrareavParseCIQ(wb){
+    var data={lteBands:{},lteBandwidth:{},lteEarfcnToBand:{},lteEarfcnToBw:{},b29Freqs:new Set(),sa5gCells:new Set(),nrSaNrFddFreqs:new Set()};
+    var lteSheet=wb.Sheets['eUtran Parameters']||wb.Sheets['eUTRAN Parameters'];
+    if(lteSheet){XLSX.utils.sheet_to_json(lteSheet,{defval:''}).forEach(function(row){
+      var cellId=String(row['EutranCellFDDId']||row['EUtranCellFDDId']||'').trim(),bandRaw=String(row['eUTRA operating band']||row['eUTRA Operating band']||'').toUpperCase(),bw=String(row['dlChannelBandwidth']||row['DL Channel Bandwidth']||''),earfcn=String(row['earfcnDl']||row['EARFCN']||'').trim();
+      var normBand=bandRaw.includes('BAND 29')||bandRaw.includes('DL-ONLY')?'B29':bandRaw.includes('BAND 14')?'B14':bandRaw.includes('BAND 17')?'B17':bandRaw.includes('BAND 12')?'B12':bandRaw.includes('BAND 5')?'B5':bandRaw.includes('BAND 2')||bandRaw.includes('PCS')?'B2':bandRaw.includes('BAND 4')?'B4':bandRaw.includes('BAND 66')||bandRaw.includes('AWS')?'B66':'';
+      if(!normBand){var m=bandRaw.match(/BAND\s*(\d+)/);if(m)normBand='B'+m[1];}
+      if(cellId){data.lteBands[cellId]=normBand;data.lteBandwidth[cellId]=bw;}
+      if(earfcn){data.lteEarfcnToBand[earfcn]=normBand;data.lteEarfcnToBw[earfcn]=bw;if(normBand==='B29')data.b29Freqs.add(earfcn);}
+    });}
+    var nrSheet=wb.Sheets['5G Info']||wb.Sheets['NR Info'];
+    if(nrSheet){XLSX.utils.sheet_to_json(nrSheet,{defval:''}).forEach(function(row){
+      var isSA=String(row['NSA/SA']||'').trim().toUpperCase()==='SA',isNrFdd=['850','PCS','AWS','5','2','66','N5','N2','N66'].includes(String(row['Operating Band']||'').trim().toUpperCase());
+      ['NRCellDU','NRCellCU','Cell Name'].forEach(function(k){if(row[k]&&isSA)data.sa5gCells.add(String(row[k]).trim());});
+      if(isSA&&isNrFdd){if(row['ssbFrequency'])data.nrSaNrFddFreqs.add(String(row['ssbFrequency']).trim());if(row['arfcnDL'])data.nrSaNrFddFreqs.add(String(row['arfcnDL']).trim());if(row['NR-ARFCN'])data.nrSaNrFddFreqs.add(String(row['NR-ARFCN']).trim());}
+    });}
+    return data;
+  }
+
+  function nrareaRunRulesAndDownload(blocks,ciq){
+    var getBw=function(bwStr){var m=String(bwStr).match(/(\d+)/);return m?(parseInt(m[1])>=1000?parseInt(m[1])/1000:parseInt(m[1])):0;};
+    var getLTEBand=function(arfcn){return ciq.lteEarfcnToBand[arfcn]||{'9685':'B29','5330':'B14','5780':'B17','1000':'B2','66986':'B66'}[arfcn]||'';};
+    var blocksRemoved=0;
+    var keptBlocks=blocks.filter(function(block){
+      var p=block.parsed,val=parseInt(block.paramValue),removeBlock=false;
+      if(p._objectType==='EUtranFreqRelation'&&block.paramName==='cellReselectionPriority'&&ciq.lteBands[p._sourceCell]==='B29'){var db=getLTEBand(p._relationArfcn);if(db==='B14'&&val===1)removeBlock=true;if(['B17','B12'].includes(db)&&val===2)removeBlock=true;if(db==='B5'&&val===2&&[5,0].includes(getBw(ciq.lteEarfcnToBw[p._relationArfcn])))removeBlock=true;if(db==='B29'&&val===4)removeBlock=true;}
+      if(p._objectType==='EUtranFreqRelation'&&block.paramName==='threshXLowQ'&&ciq.lteBands[p._sourceCell]==='B29'){var db=getLTEBand(p._relationArfcn);if(['B17','B12','B5'].includes(db)&&val===16)removeBlock=true;if(['B2','B4','B66'].includes(db)){var bw=getBw(ciq.lteEarfcnToBw[p._relationArfcn]);if([15,20].includes(bw)&&val===12)removeBlock=true;if(bw===5&&val===19)removeBlock=true;}}
+      if(p._objectType==='GUtranFreqRelation'&&block.paramName==='threshXHighQ'&&val===3){if(ciq.nrSaNrFddFreqs.has(p._relationArfcn))removeBlock=true;}
+      if(p._objectType==='NRFreqRelation'&&block.paramName==='threshXLowQ'&&val===2){if((ciq.sa5gCells.has(p._sourceCell)||p._sourceCell.includes('_N'))&&ciq.nrSaNrFddFreqs.has(p._relationArfcn))removeBlock=true;}
+      if((p._objectType==='EUtranFreqRelation'||p._objectType==='EUtranCellFDD')&&block.paramName==='tReselectionEutra'&&val===1){if(['B5','B12','B17'].includes(ciq.lteBands[p._sourceCell])){if(ciq.b29Freqs.has(p._relationArfcn))removeBlock=true;}}
+      if(removeBlock)blocksRemoved++;return !removeBlock;
+    });
+    var cleanedScript=keptBlocks.map(function(r){return r.raw;}).join('\n\n')+'\n';
+    var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([cleanedScript],{type:'text/plain'}));a.download=nrarea_scriptFileName.replace(/\.(txt|mos)$/i,'')+'_Cleaned_Conversion.txt';a.click();
+    nrareaShowStatus('Successfully converted! Removed '+blocksRemoved+' blocks.', true);
+  }
+})();
 </script>
 </body>
 </html>
