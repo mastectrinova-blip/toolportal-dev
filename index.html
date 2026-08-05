@@ -1187,20 +1187,48 @@ function App() {
     else sessionStorage.removeItem("trinova:toolId");
   }, [route, activeTool]);
 
+  // ---------- History API integration ----------
+  // Every forward navigation pushes a history entry carrying {route, toolId}.
+  // Physical Back button -> popstate -> we read history.state and just set
+  // React state to match (never re-push here, or Back would loop forward).
+  function navigateTo(nextRoute, toolId) {
+    setRoute(nextRoute);
+    if (toolId) setActiveTool(TOOLS.find(t => t.id === toolId) || null);
+    else if (nextRoute !== "tool-frame") setActiveTool(null);
+    window.history.pushState({ route: nextRoute, toolId: toolId || null }, "");
+  }
+
+  useEffect(() => {
+    function onPopState(e) {
+      const state = e.state;
+      if (!state) {
+        // No state means we've walked off the app's own history stack
+        // (e.g. Back from the very first screen) - let the browser do
+        // its default thing (leave the page / go to prior site).
+        return;
+      }
+      if (state.toolId) {
+        setActiveTool(TOOLS.find(t => t.id === state.toolId) || null);
+      } else {
+        setActiveTool(null);
+      }
+      setRoute(state.route);
+    }
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, []);
+
   function openTool(tool) {
-    setActiveTool(tool);
-    setRoute("tool-frame");
+    navigateTo("tool-frame", tool.id);
   }
 
   function backFromTool() {
-    setActiveTool(null);
-    setRoute("dashboard");
+    // Triggered by the in-app "Back to Tri NOVA" button inside the iframe.
+    // Use history.back() so the pushState entry for the tool is consumed
+    // and stays in sync with the physical Back button.
+    window.history.back();
   }
 
-  // Listen for the embedded tool's "Back to Tri NOVA" button, which posts
-  // a trinova:navigate message instead of doing a (previously broken)
-  // full-page navigation. This is the sole integration point between the
-  // SPA shell and the independently-maintained tool files.
   useEffect(() => {
     function onMessage(e) {
       if (e.data && e.data.type === "trinova:navigate" && e.data.target === "dashboard") {
@@ -1213,27 +1241,28 @@ function App() {
 
   const [checkingSession, setCheckingSession] = useState(true);
 
-  // On first load (including returning from an embedded tool iframe via
-  // ?skip_login=true), check Supabase for an existing session so the user
-  // isn't forced to log in again on every page/refresh.
   useEffect(() => {
     async function restoreSession() {
       const { data: { session } } = await sb.auth.getSession();
       if (session) {
         const profile = await loadProfile(session.user);
         setUser(profile);
+        // Seed history: Login screen sits underneath Dashboard so Back
+        // from Dashboard has somewhere in-app to land.
+        window.history.replaceState({ route: "login" }, "");
+        window.history.pushState({ route: "dashboard" }, "");
+      } else {
+        window.history.replaceState({ route: "login" }, "");
       }
       setCheckingSession(false);
 
       const params = new URLSearchParams(window.location.search);
       if (params.get("skip_login") === "true") {
-        window.history.replaceState({}, "", window.location.pathname);
+        window.history.replaceState(window.history.state, "", window.location.pathname);
       }
     }
     restoreSession();
 
-    // Keep `user` in sync if the session is refreshed or expires elsewhere
-    // (e.g. another tab, or a token refresh).
     const { data: listener } = sb.auth.onAuthStateChange(async (event, session) => {
       if (event === "SIGNED_OUT") {
         setUser(null);
@@ -1245,6 +1274,9 @@ function App() {
   function handleLogin(profile) {
     setUser(profile);
     setRoute("dashboard");
+    // The current entry is "login" (root) - push "dashboard" on top of it
+    // so Back from Home returns to Login instead of exiting.
+    window.history.pushState({ route: "dashboard" }, "");
   }
 
   async function handleLogout() {
@@ -1253,14 +1285,21 @@ function App() {
     sessionStorage.removeItem("trinova:toolId");
     setUser(null);
     setRoute("dashboard");
+    window.history.replaceState({ route: "login" }, "");
   }
 
   function handleNavigate(target) {
     if (target === "admin-login") {
-      setRoute("admin-gate");
+      navigateTo("admin-gate");
       return;
     }
-    setRoute(target);
+    if (target === "dashboard") {
+      // Treat in-app "back to dashboard" links the same as the physical
+      // Back button, so history stays consistent.
+      window.history.back();
+      return;
+    }
+    navigateTo(target);
   }
 
   if (checkingSession) {
