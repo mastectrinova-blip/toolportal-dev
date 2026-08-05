@@ -2868,6 +2868,7 @@ def cmedit_generator(excel_file,node_options):
                 script.append(f"cmedit set {siteid} NRFreqRelation={ssb}-15-20-0-2 threshXLowQ=3")
         
             script.append(f"cmedit set {siteid} RATFreqPrio=36 spidList=[-1000]")
+	          script.append(f"cmedit set {siteid} EUtranCellRelation cellIndividualOffsetEUtran=0")
             script.append(f"cmedit set {siteid} ExternalGUtranCell=310410-000000{gNBId}* isRemoveAllowed=false")
 
             for _,r in site_lte_df.iterrows():
