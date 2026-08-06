@@ -1199,8 +1199,33 @@ FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},System
 featureState : ACTIVATED
 
 """)
+            if is_sa and not has_hb:
+                script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBDUFunction=1,AdmissionControl=1"
+admissionPrioThreshold : 6
+rrcHighPriorityAccessPrio : 3
 
+""")
+            else:
+                script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBDUFunction=1,AdmissionControl=1"
+admissionPrioThreshold : 1
+rrcHighPriorityAccessPrio : 12
 
+""")
+
+            if not has_hb and ( isidas or is_sa):
+                script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBDUFunction=1,UeCC=1,SchedulingProfile=5qi6"
+schedulingAlgorithm : PRIORITIZED_RATE
+
+""")
+            else:
+                script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBDUFunction=1,UeCC=1,SchedulingProfile=5qi6"
+schedulingAlgorithm : RESOURCE_FAIR
+
+""")
 
             script.append(f"""create
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBCUCPFunction=1,UeGroupSelection=1,UeServiceGroupDefinition=TurboLive"
@@ -1298,11 +1323,6 @@ configuredSeverity : CRITICAL
 set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBCUCPFunction=1,UeGroupSelection=1,UeServiceGroupDefinition=TurboLive"
 selectionCriteria : "(spid==19&&qci==7)||(rfsp==19&&5qi==7)"
-
-set
-FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBDUFunction=1,AdmissionControl=1"
-admissionPrioThreshold : 1
-rrcHighPriorityAccessPrio : 12
 
 set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBCUCPFunction=1,UeCC=1,UlDataSplit=Default_endc,UlDataSplitUeCfg=Base"
