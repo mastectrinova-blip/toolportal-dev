@@ -2158,6 +2158,12 @@ rsrpSearchZone : {{threshold=-113}}
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBCUCPFunction=1,TrafficSteering=1,TrStSaCellProfile={cell},TrStSaCellProfileUeCfg=RedCap"
 criterionBetterUeConfig : 10
 
+create
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBCUCPFunction=1,TrafficSteering=1,TrStSaCellProfile={cell},TrStSaCellProfileUeCfg=FN_SA"
+actionAtRelease : PRIORITY_LIST
+trStSaCellProfileUeCfgId : "FN_SA"
+ueConfGroupList : [16]
+
 set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBCUCPFunction=1,TrafficSteering=1,TrStSaCellProfile={cell},TrStSaCellProfileUeCfg=FN_SA"
 bwTrigISHoTriggerQuantity : RSRP
@@ -2868,7 +2874,6 @@ def cmedit_generator(excel_file,node_options):
                 script.append(f"cmedit set {siteid} NRFreqRelation={ssb}-15-20-0-2 threshXLowQ=3")
         
             script.append(f"cmedit set {siteid} RATFreqPrio=36 spidList=[-1000]")
-            script.append(f"cmedit set {siteid} EUtranCellRelation cellIndividualOffsetEUtran=0")
             script.append(f"cmedit set {siteid} ExternalGUtranCell=310410-000000{gNBId}* isRemoveAllowed=false")
 
             for _,r in site_lte_df.iterrows():
@@ -2880,6 +2885,13 @@ def cmedit_generator(excel_file,node_options):
                     for earfcn in b29_earfcn:
                         script.append(f"cmedit set {siteid} EUtranCellFDD.(EUtranCellFDDId=={cell}), EUtranFreqRelation.(EUtranFreqRelationId=={earfcn}) EUtranFreqRelation.tReselectionEutra=4")
 
+                if cell in b29_cells:
+                    script.append(f"cmedit set {siteid} EUtranCellFDD.(EUtranCellFDDId=={cell}),EUtranFreqRelation EUtranFreqRelation.lbBnrPolicy:NOT_ALLOWED")
+
+            for earfcn in b29_earfcn:
+                script.append(f"cmedit set {siteid} EUtranFreqRelation={earfcn} lbBnrPolicy : NOT_ALLOWED")
+
+
             if not n77:
                 for ssb in inter_n77:
                     script.append(f"cmedit set {siteid} GUtranFreqRelation={ssb}-30-20-0-1 b1ThrRsrpFreqOffset=0")
@@ -2888,7 +2900,8 @@ def cmedit_generator(excel_file,node_options):
             for _,r in site_lte_df.iterrows():
                 sc = r.get("sectorId")
                 script.append(f"cmedit set SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,SectorCarrier={sc} microSleepTxEnabled : true")
-            
+
+                
 
             return script
 
@@ -3095,14 +3108,20 @@ def cmedit_generator(excel_file,node_options):
             hicap = not lte_df["High Capacity Site"].astype(str).str.strip().str.contains(r"^(?:NO|NA|N/A)$", case=False, na=False).any()
 
             #-------------------------------------------------------------------
-            #           Cellids and others
+            # Cellids
             #-------------------------------------------------------------------
 
 
             b14_cellids = (b14_df["cellId"].dropna().astype(int).tolist())
             b14_cellids_str = f"[{','.join(map(str, b14_cellids))}]"
 
+            #-------------------------------------------------------------------
+            # Earfcn
+            #-------------------------------------------------------------------
+
             b29_earfcn = (b29_df["earfcnDl"].dropna().astype(int).unique().tolist())
+
+
 
             # --------------------------------
             # SA NR-FDD SSBs
