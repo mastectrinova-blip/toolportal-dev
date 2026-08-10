@@ -1041,6 +1041,9 @@ featureState : DEACTIVATED
             elif is_sa and not is_vonr:
                 state = "DEACTIVATED"
 
+            elif not is_sa:
+                state = "DEACTIVATED"
+
             else:
                 state = "ACTIVATED"
 
@@ -1078,7 +1081,7 @@ FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},System
 featureState : DEACTIVATED
 
 """)
-            if has_hb:
+            if has_hb or not isidas:
                 script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012659"
 featureState : DEACTIVATED
@@ -1297,10 +1300,6 @@ FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},System
 featureState : ACTIVATED
 
 set
-FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012477"
-featureState : ACTIVATED
-
-set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4011809"
 featureState : DEACTIVATED
 
@@ -1347,6 +1346,23 @@ tRrcConnectionReconfiguration : 15
 set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,Rcs=1"
 tInactivityTimer : 6
+
+""")
+            if resolved_type == "tmbb":
+                script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012477"
+featureState : ACTIVATED
+""")
+            elif resolved_type == "mmbb":
+                if (not is_sa and site_n77.empty) or (not site_n77.empty and re.search(r"4435", rru_type, re.IGNORECASE)):
+                    script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012477"
+featureState : DEACTIVATED
+""")
+                else:
+                    script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012477"
+featureState : ACTIVATED
 
 """)
         
@@ -1653,6 +1669,21 @@ triggerQuantityA1A2 : RSRQ
 set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell},UeMeasControl=1,ReportConfigSCellA6=1"
 timeToTriggerA6 : 1024
+
+""")
+
+                if cell in b29_cells:
+                    script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell},UeMeasControl=1,ReportConfigSCellA1A2=1"
+a1a2ThresholdRsrq : -165
+hysteresisA1A2Rsrp : 10
+hysteresisA1A2Rsrq : 15
+timeToTriggerA2 : 40
+triggerQuantityA1A2 : RSRP
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell},UeMeasControl=1,ReportConfigSCellA6=1"
+timeToTriggerA6 : 40
 
 """)
 
