@@ -2310,7 +2310,13 @@ rsrpCellCandidate : {{threshold={-129 if sa_type else -140}}}
 
 """)
                     if sa_type == "SA":
-                        script.append(f"""set
+                        script.append(f"""create
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBCUCPFunction=1,TrafficSteering=1,TrStSaCellProfile={cell},TrStSaCellProfileUeCfg=FN_SA"
+actionAtRelease : PRIORITY_LIST
+trStSaCellProfileUeCfgId : "FN_SA"
+ueConfGroupList : [16]
+						
+set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBCUCPFunction=1,TrafficSteering=1,TrStSaCellProfile={cell},TrStSaCellProfileUeCfg=FN_SA"
 aggregatedBwThreshold : 10
 bwTrigISHoEnabled : False
