@@ -970,13 +970,13 @@ def NDS_delta_generator(excel_file,node_options):
             is_4890radio = "RRU type" in lte.columns and lte["RRU type"].astype(str).str.contains(r"4890", case=False, na=False).any()
             is_4402radio = "RRU type" in lte.columns and lte["RRU type"].astype(str).str.contains(r"4402", case=False, na=False).any()
             is_2203radio = "RRU type" in lte.columns and lte["RRU type"].astype(str).str.contains(r"2203", case=False, na=False).any()
-
+            is_4435radio = "RRU type" in lte.columns and lte["RRU type"].astype(str).str.contains(r"4435", case=False, na=False).any()
             
             sa_clean = fiveg.set_index("NRCellDU")["NSA/SA"].astype(str).str.strip().str.upper()
             
-            return  mixed, fiveg, lte, enb, gnb, is_rds, sa, sa_clean, is_3radio, is_4890radio, is_4402radio, is_2203radio, la_n, la_c
+            return  mixed, fiveg, lte, enb, gnb, is_rds, sa, sa_clean, is_3radio, is_4890radio, is_4402radio, is_2203radio, is_4435radio, la_n, la_c
 
-        mixed_df, fiveg_df, lte_df, enb_df, gnb_df, is_rds, sa_df, sa_clean, is_3radio, is_4890radio, is_4402radio, is_2203radio, la_n, la_c = load_excel()
+        mixed_df, fiveg_df, lte_df, enb_df, gnb_df, is_rds, sa_df, sa_clean, is_3radio, is_4890radio, is_4402radio, is_2203radio, is_4435radio, la_n, la_c = load_excel()
 
 
 
@@ -1382,7 +1382,7 @@ FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},System
 featureState : ACTIVATED
 """)
             elif resolved_type == "mmbb":
-                if (not is_sa and site_n77.empty) or (not site_n77.empty and re.search(r"4435", rru_type, re.IGNORECASE)):
+                if (not is_sa and site_n77.empty) or (not site_n77.empty and is_4435radio):
                     script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012477"
 featureState : DEACTIVATED
@@ -2310,7 +2310,13 @@ rsrpCellCandidate : {{threshold={-129 if sa_type else -140}}}
 
 """)
                     if sa_type == "SA":
-                        script.append(f"""set
+                        script.append(f"""create
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBCUCPFunction=1,TrafficSteering=1,TrStSaCellProfile={cell},TrStSaCellProfileUeCfg=FN_SA"
+actionAtRelease : PRIORITY_LIST
+trStSaCellProfileUeCfgId : "FN_SA"
+ueConfGroupList : [16]
+                        
+set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBCUCPFunction=1,TrafficSteering=1,TrStSaCellProfile={cell},TrStSaCellProfileUeCfg=FN_SA"
 aggregatedBwThreshold : 10
 bwTrigISHoEnabled : False
