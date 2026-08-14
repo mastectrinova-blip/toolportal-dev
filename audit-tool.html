@@ -996,7 +996,7 @@ def NDS_delta_generator(excel_file,node_options):
         def delta_script(siteid):
             script = []
 
-            if not b14_df.empty:
+            if b14:
                 script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4011557"
 featureState : ACTIVATED
@@ -1607,7 +1607,7 @@ timeToTriggerB1 : 80
 """)
 
 
-                if (has_nr and has_lte) and ("ARL" not in cell or "OKL" not in cell):
+                if lte_anchor and ("ARL" not in cell or "OKL" not in cell):
                     script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell}"
 endcSetupUlBsVolThr : 10000
@@ -1617,7 +1617,7 @@ FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeB
 endcSetupDlPktVolThr : 50
 
 """)
-                if not has_nr:
+                if not lte_anchor:
                     script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell}"
 endcSetupUlBsVolThr : 0
@@ -2485,7 +2485,7 @@ mlcEnabled : {"True" if bw<= 30 else "False"}
                 is_vonr = False
 
             # --------------------------------
-            # cells
+            # cells - Node lvl
             # --------------------------------
 
             b2_df = site_lte_df[site_lte_df["eUTRA operating band"].astype(str).str.contains(r"Band\s*2\b", case=False, na=False)]
@@ -2525,6 +2525,21 @@ mlcEnabled : {"True" if bw<= 30 else "False"}
             b29_cells = b29_df["EutranCellFDDId"].tolist()
             b30_cells = b30_df["EutranCellFDDId"].tolist()
 
+            # --------------------------------
+            # cells - Whole site
+            # --------------------------------
+
+
+            n_b2_df = lte_df[lte_df["eUTRA operating band"].astype(str).str.contains(r"Band\s*2\b", case=False, na=False)]
+            n_b4_df = lte_df[lte_df["eUTRA operating band"].astype(str).str.contains(r"Band\s*4\b", case=False, na=False)]
+            n_b66_df = lte_df[lte_df["eUTRA operating band"].astype(str).str.contains(r"Band\s*66\b", case=False, na=False)]
+            n_b5_df = lte_df[lte_df["eUTRA operating band"].astype(str).str.contains(r"Band\s*5\b",case=False,na=False)]
+            n_b17_df = lte_df[lte_df["eUTRA operating band"].astype(str).str.contains(r"Band\s*17\b",case=False,na=False)]
+            n_b14_df = lte_df[lte_df["eUTRA operating band"].astype(str).str.contains(r"Band\s*14\b",case=False,na=False)]
+            n_b29_df = lte_df[lte_df["eUTRA operating band"].astype(str).str.contains(r"Band\s*29\b",case=False,na=False)]
+            n_b30_df = lte_df[lte_df["eUTRA operating band"].astype(str).str.contains(r"Band\s*30\b",case=False,na=False)]
+
+
 
             #-------------------------------------------------------------------
             #          Cell Flags
@@ -2556,32 +2571,32 @@ mlcEnabled : {"True" if bw<= 30 else "False"}
 
             catm_cells = []
 
-            if not b17_df.empty:
+            if not n_b17_df.empty:
                 # Highest priority -> All Band17 cells
-                catm_cells = b17_df["EutranCellFDDId"].tolist()
+                catm_cells = n_b17_df["EutranCellFDDId"].tolist()
 
             else:
 
-                best_b2 = pd.DataFrame(columns=b2_df.columns)
-                best_b4 = pd.DataFrame(columns=b4_df.columns)
+                best_b2 = pd.DataFrame(columns=n_b2_df.columns)
+                best_b4 = pd.DataFrame(columns=n_b4_df.columns)
 
                 # Highest BW Band2 carrier
-                if not b2_df.empty:
-                    b2_df = b2_df.copy()
-                    b2_df["BW"] = b2_df["dlChannelBandwidth"].apply(parse_bw)
+                if not n_b2_df.empty:
+                    n_b2_df = n_b2_df.copy()
+                    n_b2_df["BW"] = n_b2_df["dlChannelBandwidth"].apply(parse_bw)
 
-                    max_bw = b2_df["BW"].max()
+                    max_bw = n_b2_df["BW"].max()
 
-                    best_b2 = b2_df[b2_df["BW"] == max_bw]
+                    best_b2 = n_b2_df[n_b2_df["BW"] == max_bw]
 
                 # Highest BW Band4 carrier
-                if not b4_df.empty:
-                    b4_df = b4_df.copy()
-                    b4_df["BW"] = b4_df["dlChannelBandwidth"].apply(parse_bw)
+                if not n_b4_df.empty:
+                    n_b4_df = n_b4_df.copy()
+                    n_b4_df["BW"] = n_b4_df["dlChannelBandwidth"].apply(parse_bw)
 
-                    max_bw = b4_df["BW"].max()
+                    max_bw = n_b4_df["BW"].max()
 
-                    best_b4 = b4_df[b4_df["BW"] == max_bw]
+                    best_b4 = n_b4_df[n_b4_df["BW"] == max_bw]
 
                 b2_bw = best_b2["BW"].iloc[0] if not best_b2.empty else -1
                 b4_bw = best_b4["BW"].iloc[0] if not best_b4.empty else -1
