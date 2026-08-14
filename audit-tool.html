@@ -2607,8 +2607,13 @@ mlcEnabled : {"True" if bw<= 30 else "False"}
                 else:
                     catm_cells = best_b4["EutranCellFDDId"].tolist()
 
-            is_catm_node = bool(catm_cells)
-
+            for _,r in site_lte_df.iterrows():
+                cell = r.get("EutranCellFDDId")
+                if cell in catm_cells:
+                    is_catm_node = True
+                    break
+                else:
+                    is_catm_node = False
 
             #-------------------------------------------------------------------
             #           Sleep Cells
