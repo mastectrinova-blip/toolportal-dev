@@ -986,7 +986,7 @@ def NDS_delta_generator(excel_file,node_options):
         la_n_has, la_n_hb = evaluate_sheet(la_n, "GutranFreqRelationID")
         la_c_has, la_c_hb = evaluate_sheet(la_c, "GutranFreqRelationID")
 
-        lte_anchor = la_n_has or la_c_has
+        lte_anchor = la_n_has or la_c_has or not fiveg_df.empty
 
         lte_anchor_hb = ((la_n_has and la_n_hb) or (la_c_has and la_c_hb))
 
@@ -1078,6 +1078,11 @@ featureState : DEACTIVATED
             script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012713"
 featureState : {state}
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012188"
+featureState : DEACTIVATED
+
 """)
 
   
@@ -2372,7 +2377,19 @@ mlcEnabled : {"True" if bw<= 30 else "False"}
 
 """)
 
+                if cell in site_n77["NRCellDU"].values and bw >=80:
+                    script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBDUFunction=1,UeCC=1,CgSwitchCfg={cell}"
+dlCgSwitchMode : DISABLED
 
+""")
+
+                else:
+                    script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBDUFunction=1,UeCC=1,CgSwitchCfg={cell}"
+dlCgSwitchMode : ENABLED
+
+""")
 
             return script
 
@@ -2983,13 +3000,14 @@ def cmedit_generator(excel_file,node_options):
             is_4890radio = "RRU type" in lte.columns and lte["RRU type"].astype(str).str.contains(r"4890", case=False, na=False).any()
             is_4402radio = "RRU type" in lte.columns and lte["RRU type"].astype(str).str.contains(r"4402", case=False, na=False).any()
             is_2203radio = "RRU type" in lte.columns and lte["RRU type"].astype(str).str.contains(r"2203", case=False, na=False).any()
+            is_8843radio = "RRU type" in lte.columns and lte["RRU type"].astype(str).str.contains(r"8843", case=False, na=False).any()
 
             
             sa_clean = fiveg.set_index("NRCellDU")["NSA/SA"].astype(str).str.strip().str.upper()
             
-            return  mixed, fiveg, lte, enb, gnb, is_rds, sa, sa_clean, is_3radio, is_4890radio, is_4402radio, is_2203radio, la_n, la_c
+            return  mixed, fiveg, lte, enb, gnb, is_rds, sa, sa_clean, is_3radio, is_4890radio, is_4402radio, is_2203radio, is_8843radio, la_n, la_c
 
-        mixed_df, fiveg_df, lte_df, enb_df, gnb_df, is_rds, sa_df, sa_clean, is_3radio, is_4890radio, is_4402radio, is_2203radio, la_n, la_c = load_excel()
+        mixed_df, fiveg_df, lte_df, enb_df, gnb_df, is_rds, sa_df, sa_clean, is_3radio, is_4890radio, is_4402radio, is_2203radio, is_8843radio, la_n, la_c = load_excel()
 
 
 
@@ -3009,12 +3027,13 @@ def cmedit_generator(excel_file,node_options):
         def delta_script(siteid):
             script = []
 
-            script.append(f"cmedit set {siteid} EUtranFreqRelation cellReselectionPriorityBr=7")
-            script.append(f"cmedit set {siteid} EUtranCellRelation qOffsetCellEUtran=0")
+            script.append(f"""
+cmedit set {siteid} EUtranFreqRelation cellReselectionPriorityBr=7
+cmedit set {siteid} EUtranCellRelation qOffsetCellEUtran=0
+cmedit set {siteid} EUtranCellRelation cellIndividualOffsetEUtran=0
 
-            for ssb in sa_fdd_ssb:
-                script.append(f"cmedit set {siteid} GUtranFreqRelation={ssb}-15-20-0-2 threshXHighQ=2")
-                script.append(f"cmedit set {siteid} NRFreqRelation={ssb}-15-20-0-2 threshXLowQ=3")
+""")
+
         
             script.append(f"cmedit set {siteid} RATFreqPrio=36 spidList=[-1000]")
             script.append(f"cmedit set {siteid} ExternalGUtranCell=310410-000000{gNBId}* isRemoveAllowed=false")
@@ -3024,12 +3043,19 @@ def cmedit_generator(excel_file,node_options):
                 if cell in b14_cells:
                     script.append(f"cmedit set {siteid} EUtranCellFDD.(EUtranCellFDDId=={cell}), EUtranFreqRelation EUtranFreqRelation.lbActivationThreshold:1500")
 
-                if cell in b17_cells and not b29_df.empty:
+                if (cell in b17_cells or cell in b5_cells) and not b29_df.empty:
                     for earfcn in b29_earfcn:
                         script.append(f"cmedit set {siteid} EUtranCellFDD.(EUtranCellFDDId=={cell}), EUtranFreqRelation.(EUtranFreqRelationId=={earfcn}) EUtranFreqRelation.tReselectionEutra=4")
 
                 if cell in b29_cells:
                     script.append(f"cmedit set {siteid} EUtranCellFDD.(EUtranCellFDDId=={cell}),EUtranFreqRelation EUtranFreqRelation.lbBnrPolicy:NOT_ALLOWED")
+                    script.append(f"cmedit set {siteid} EUtranCellFDD.(EUtranCellFDDId=={cell}),EUtranFreqRelation EUtranFreqRelation.threshXLowQ:14")
+
+                    for earfcn in non_b29_earfcn:
+                        script.append(f"cmedit set {siteid} EUtranCellFDD.(EUtranCellFDDId=={cell}),EUtranFreqRelation.(EUtranFreqRelationId=={earfcn}) EUtranFreqRelation.cellReselectionPriority:4")
+                    
+                    for earfcn in b29_earfcn:
+                        script.append(f"cmedit set {siteid} EUtranCellFDD.(EUtranCellFDDId=={cell}),EUtranFreqRelation.(EUtranFreqRelationId=={earfcn}) EUtranFreqRelation.cellReselectionPriority:1")
 
             for earfcn in b29_earfcn:
                 script.append(f"cmedit set {siteid} EUtranFreqRelation={earfcn} lbBnrPolicy : NOT_ALLOWED")
@@ -3042,8 +3068,20 @@ def cmedit_generator(excel_file,node_options):
 
             for _,r in site_lte_df.iterrows():
                 sc = r.get("sectorId")
-                script.append(f"cmedit set SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,SectorCarrier={sc} microSleepTxEnabled : true")
+                ssb = r.get("ssbFrequency")
+                if isdas or is_8843radio:
+                    value = "FALSE"
+                else:
+                    value = "TRUE"
+                
+                    script.append(f"cmedit set SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,SectorCarrier={sc} microSleepTxEnabled : {value}")
 
+
+
+
+                if ssb in site_sa_df["ssbFrequency"].values:
+                    script.append(f"cmedit set {siteid} GUtranFreqRelation={ssb}-15-20-0-2 threshXHighQ=2")
+                    script.append(f"cmedit set {siteid} NRFreqRelation={ssb}-15-20-0-2 threshXLowQ=3")
                 
 
             return script
@@ -3208,6 +3246,7 @@ def cmedit_generator(excel_file,node_options):
             b17_df = site_lte_df[site_lte_df["eUTRA operating band"].astype(str).str.contains(r"Band\s*17\b",case=False,na=False)]
             b14_df = site_lte_df[site_lte_df["eUTRA operating band"].astype(str).str.contains(r"Band\s*14\b",case=False,na=False)]
             b29_df = site_lte_df[site_lte_df["eUTRA operating band"].astype(str).str.contains(r"Band\s*29\b",case=False,na=False)]
+            non_b29_df = site_lte_df[~site_lte_df["eUTRA operating band"].astype(str).str.contains(r"Band\s*29\b",case=False,na=False)]
             b30_df = site_lte_df[site_lte_df["eUTRA operating band"].astype(str).str.contains(r"Band\s*30\b",case=False,na=False)]
 
             mb_df = pd.concat([b2_df, b4_df, b66_df], ignore_index=True)
@@ -3263,20 +3302,8 @@ def cmedit_generator(excel_file,node_options):
             #-------------------------------------------------------------------
 
             b29_earfcn = (b29_df["earfcnDl"].dropna().astype(int).unique().tolist())
+            non_b29_earfcn = (non_b29_df["earfcnDl"].dropna().astype(int).unique().tolist())
 
-
-
-            # --------------------------------
-            # SA NR-FDD SSBs
-            # --------------------------------
-            sa_fdd_ssb = []
-            for _, sa_row in site_sa_df.iterrows():
-                cell = sa_row.get("NRCellDU")
-                if cell in site_n77["NRCellDU"].values:
-                    continue  # Skip if the cell is already in site_n77
-                ssb = sa_row.get("ssbFrequency")
-                if ssb not in sa_fdd_ssb:
-                    sa_fdd_ssb.append(ssb)
 
             # --------------------------------
             # Interusid n77 SSBs
