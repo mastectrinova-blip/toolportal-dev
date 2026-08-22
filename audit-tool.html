@@ -3027,11 +3027,9 @@ def cmedit_generator(excel_file,node_options):
         def delta_script(siteid):
             script = []
 
-            script.append(f"""
-cmedit set {siteid} EUtranFreqRelation cellReselectionPriorityBr=7
+            script.append(f"""cmedit set {siteid} EUtranFreqRelation cellReselectionPriorityBr=7
 cmedit set {siteid} EUtranCellRelation qOffsetCellEUtran=0
 cmedit set {siteid} EUtranCellRelation cellIndividualOffsetEUtran=0
-
 """)
 
         
@@ -3077,7 +3075,8 @@ cmedit set {siteid} EUtranCellRelation cellIndividualOffsetEUtran=0
                     script.append(f"cmedit set SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,SectorCarrier={sc} microSleepTxEnabled : {value}")
 
 
-
+            for _,r in site_fg_df.iterrows():
+                ssb = r.get("ssbFrequency")
 
                 if ssb in site_sa_df["ssbFrequency"].values:
                     script.append(f"cmedit set {siteid} GUtranFreqRelation={ssb}-15-20-0-2 threshXHighQ=2")
