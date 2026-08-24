@@ -3075,7 +3075,7 @@ cmedit set {siteid} EUtranCellRelation cellIndividualOffsetEUtran=0
                     script.append(f"cmedit set SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,SectorCarrier={sc} microSleepTxEnabled : {value}")
 
 
-            for _,r in site_fg_df.iterrows():
+            for _,r in site_non_n77.iterrows():
                 ssb = r.get("ssbFrequency")
 
                 if ssb in site_sa_df["ssbFrequency"].values:
