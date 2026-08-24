@@ -3063,7 +3063,7 @@ cmedit set {siteid} EUtranCellRelation cellIndividualOffsetEUtran=0
                 for ssb in inter_n77:
                     script.append(f"cmedit set {siteid} GUtranFreqRelation={ssb}-30-20-0-1 b1ThrRsrpFreqOffset=0")
 
-
+            
             for _,r in site_lte_df.iterrows():
                 sc = r.get("sectorId")
                 ssb = r.get("ssbFrequency")
@@ -3074,11 +3074,14 @@ cmedit set {siteid} EUtranCellRelation cellIndividualOffsetEUtran=0
                 
                     script.append(f"cmedit set SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,SectorCarrier={sc} microSleepTxEnabled : {value}")
 
-
+            processed_ssbs = set()
             for _,r in site_non_n77.iterrows():
                 ssb = r.get("ssbFrequency")
+                if ssb in processed_ssbs:
+                  continue
 
                 if ssb in site_sa_df["ssbFrequency"].values:
+                    processed_ssbs.add(ssb)
                     script.append(f"cmedit set {siteid} GUtranFreqRelation={ssb}-15-20-0-2 threshXHighQ=2")
                     script.append(f"cmedit set {siteid} NRFreqRelation={ssb}-15-20-0-2 threshXLowQ=3")
                 
