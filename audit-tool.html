@@ -9,6 +9,7 @@
 <!-- Libraries for KGetAll Comparison Tool (colored Excel export) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <style>
 :root{--bg:#f0f6ff;--surface:#ffffff;--sidebar:#1a2744;--border:#d0e0f5;--accent:#2563eb;--accent-light:#dbeafe;--green:#16a34a;--green-light:#dcfce7;--red:#dc2626;--red-light:#fee2e2;--amber:#d97706;--amber-light:#fef3c7;--text:#1e293b;--text2:#475569;--muted:#94a3b8;--font:'Inter',sans-serif;--mono:'JetBrains Mono',monospace;--shadow:0 1px 3px rgba(0,0,0,0.08),0 4px 16px rgba(37,99,235,0.06);--shadow-lg:0 4px 24px rgba(37,99,235,0.12);}
 *{box-sizing:border-box;margin:0;padding:0;}
@@ -93,6 +94,13 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 .section-card{background:#fff;border:1.5px solid var(--border);border-radius:14px;padding:24px;box-shadow:var(--shadow);}
 .section-title{font-size:13px;font-weight:700;color:var(--text);margin-bottom:16px;display:flex;align-items:center;gap:8px;text-transform:uppercase;letter-spacing:0.5px;}
 .step-badge{width:22px;height:22px;border-radius:50%;background:var(--accent);color:#fff;font-size:11px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;}
+.node-band-badge{font-size:11px;font-weight:600;padding:2px 9px;border-radius:20px;background:var(--accent-light);color:var(--accent);margin-left:6px;text-transform:none;letter-spacing:0;}
+.tbl-wrap{overflow-x:auto;}
+.node-band-table{width:100%;border-collapse:collapse;font-size:13px;}
+.node-band-table th{text-align:left;padding:10px 14px;background:var(--bg);border-bottom:1px solid var(--border);font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);white-space:nowrap;}
+.node-band-table td{padding:10px 14px;border-bottom:1px solid var(--border);vertical-align:middle;}
+.node-band-table tr:last-child td{border-bottom:none;}
+.node-band-table td input[type=checkbox]{accent-color:var(--accent);width:15px;height:15px;cursor:pointer;}
 .upload-zone{border:2px dashed var(--border);border-radius:10px;padding:36px;text-align:center;cursor:pointer;transition:all 0.2s;position:relative;background:var(--bg);}
 .upload-zone:hover,.upload-zone.dragover{border-color:var(--accent);background:var(--accent-light);}
 .upload-zone.has-file{border-color:var(--green);background:var(--green-light);border-style:solid;}
@@ -336,13 +344,22 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
       </div>
 
       <div class="gen-section">
-        <div class="section-card">
-          <div class="section-title"><span class="step-badge">3</span> Save Location (Folder)</div>
-          <div style="display:flex;align-items:center;gap:10px;">
-            <input type="text" id="folderPath" readonly placeholder="No folder selected" style="flex:1;padding:10px 14px;background:var(--bg);border:1.5px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;font-family:var(--mono);outline:none;" />
-            <button onclick="pickFolder()" style="padding:10px 18px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;font-family:var(--font);">&#128193; Browse</button>
+        <div class="section-card" id="nodeBandSection" style="display:none">
+          <div class="section-title" style="text-transform:none;letter-spacing:0;">📡 Per-Node Band Flags <span class="node-band-badge">Auto-detected from Excel</span></div>
+          <p style="font-size:13px;color:var(--muted);margin-bottom:14px;">Node IDs load automatically from "Mixed Mode Info".</p>
+          <div class="tbl-wrap">
+            <table class="node-band-table">
+              <thead>
+                <tr>
+                  <th style="width:80%">Node ID</th>
+                  <th style="width:20%;text-align:left;">FN SA<br><small style="display:block;font-weight:400;text-transform:none;">If famf present</small></th>
+                </tr>
+              </thead>
+              <tbody id="nodeBandTbody">
+                <tr><td colspan="2" style="color:var(--muted);text-align:center;padding:22px">Upload Excel to load nodes</td></tr>
+              </tbody>
+            </table>
           </div>
-          <p style="font-size:11px;color:var(--muted);margin-top:6px;">Select a folder where the generated scripts will be saved.</p>
         </div>
       </div>
       <button class="gen-btn-main" id="genBtn" onclick="generate()">
@@ -981,7 +998,7 @@ def NDS_delta_generator(excel_file,node_options):
 
 
         # idas = node_options.get("iDAS", False)
-        # node_bands = node_options.get("NODE_BANDS", {})
+        node_bands = node_options.get("NODE_BANDS", {})
         
         la_n_has, la_n_hb = evaluate_sheet(la_n, "GutranFreqRelationID")
         la_c_has, la_c_hb = evaluate_sheet(la_c, "GutranFreqRelationID")
@@ -1235,7 +1252,7 @@ FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},System
 featureState : ACTIVATED
 
 """)
-            if is_sa and not has_hb:
+            if fn_sa and not has_hb:
                 script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBDUFunction=1,AdmissionControl=1"
 admissionPrioThreshold : 6
@@ -1250,7 +1267,7 @@ rrcHighPriorityAccessPrio : 12
 
 """)
 
-            if not has_hb and ( isidas or is_sa):
+            if not has_hb and ( isidas or fn_sa):
                 script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBDUFunction=1,UeCC=1,SchedulingProfile=5qi6"
 schedulingAlgorithm : PRIORITIZED_RATE
@@ -2410,7 +2427,7 @@ dlCgSwitchMode : ENABLED
 
             siteid = row.get("Node to be built as")
             is_idle = str(row["IDLA"]).strip().upper() not in ["", "N/A", "NA", "NO", "NONE", "NAN"]
-            # fn_sa = (node_bands.get(str(siteid), {}).get("FN_SA", False))
+            fn_sa = (node_bands.get(str(siteid), {}).get("FN_SA", False))
             eNBId = row.get("eNBId")
             gNBId = row.get("gNBId")
 
@@ -3011,8 +3028,8 @@ def cmedit_generator(excel_file,node_options):
 
 
 
-        # idas = node_options.get("iDAS", False)
-        # node_bands = node_options.get("NODE_BANDS", {})
+
+        node_bands = node_options.get("NODE_BANDS", {})
         
         la_n_has, la_n_hb = evaluate_sheet(la_n, "GutranFreqRelationID")
         la_c_has, la_c_hb = evaluate_sheet(la_c, "GutranFreqRelationID")
@@ -3769,43 +3786,62 @@ function setGen(e,val){
 var ciqInput=document.getElementById('ciqFile');
 var ciqZone=document.getElementById('ciqZone');
 ciqInput.addEventListener('change',function(){
-  if(ciqInput.files[0]){ciqZone.classList.add('has-file');var b=document.getElementById('ciqBadge');b.textContent='\u2713 '+ciqInput.files[0].name;b.style.display='inline-block';}
+  if(ciqInput.files[0]){ciqZone.classList.add('has-file');var b=document.getElementById('ciqBadge');b.textContent='\u2713 '+ciqInput.files[0].name;b.style.display='inline-block';loadNodeBands(ciqInput.files[0]);}
 });
 ciqZone.addEventListener('dragover',function(e){e.preventDefault();ciqZone.classList.add('dragover');});
 ciqZone.addEventListener('dragleave',function(){ciqZone.classList.remove('dragover');});
 ciqZone.addEventListener('drop',function(e){e.preventDefault();ciqZone.classList.remove('dragover');if(e.dataTransfer.files[0]){ciqInput.files=e.dataTransfer.files;ciqInput.dispatchEvent(new Event('change'));}});
+
+// Per-Node Band Flags (auto-detected from "Mixed Mode Info")
+function loadNodeBands(f){
+  if(!f)return;
+  document.getElementById('nodeBandSection').style.display='block';
+  var r=new FileReader();
+  r.onload=function(e){
+    try{
+      var wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'});
+      var ws=wb.Sheets['Mixed Mode Info'];
+      if(!ws){setNodeBandMsg('"Mixed Mode Info" sheet not found.');return;}
+      var rows=XLSX.utils.sheet_to_json(ws,{defval:''});
+      var col=Object.keys(rows[0]||{}).find(function(k){return k.trim()==='Node to be built as';});
+      if(!col){setNodeBandMsg('"Node to be built as" column not found.');return;}
+      var seen={},nodes=[];
+      rows.forEach(function(row){var v=row[col];if(v&&!seen[v]){seen[v]=true;nodes.push(v);}});
+      buildNodeBandTable(nodes);
+    }catch(err){setNodeBandMsg('Cannot read Excel: '+err.message);}
+  };
+  r.readAsArrayBuffer(f);
+}
+function setNodeBandMsg(msg){
+  document.getElementById('nodeBandTbody').innerHTML='<tr><td colspan="2" style="color:var(--muted);text-align:center;padding:22px">'+msg+'</td></tr>';
+}
+function buildNodeBandTable(nodes){
+  if(!nodes.length){setNodeBandMsg('No nodes found.');return;}
+  document.getElementById('nodeBandTbody').innerHTML=nodes.map(function(n){
+    return '<tr>'+
+      '<td><strong style="font-family:var(--mono)">'+n+'</strong></td>'+
+      '<td style="width:20%;text-align:left;"><input type="checkbox" data-node="'+n+'" data-band="FN_SA" class="node-band-cb"/></td>'+
+      '</tr>';
+  }).join('');
+}
+function getNodeBands(){
+  var r={};
+  document.querySelectorAll('.node-band-cb').forEach(function(cb){
+    var n=cb.dataset.node,b=cb.dataset.band;
+    if(!r[n])r[n]={FN_SA:false};
+    r[n][b]=cb.checked;
+  });
+  return r;
+}
 
 function log(msg,type){
   type=type||'info';
   console.log('['+type+'] '+msg);
 }
 
-var pickedFolderHandle = null;
-
-async function pickFolder(){
-  try {
-    pickedFolderHandle = await window.showDirectoryPicker();
-    document.getElementById('folderPath').value = pickedFolderHandle.name;
-  } catch(e){
-    if(e.name !== 'AbortError') alert('Folder selection not supported in this browser.');
-  }
-}
-
+var genOutputs = {}; // filename -> content, collected for a single zip download
 async function addDl(content, filename, label){
-  var blob = new Blob([content], {type:'text/plain'});
-  if(pickedFolderHandle){
-    try {
-      var fileHandle = await pickedFolderHandle.getFileHandle(filename, {create:true});
-      var writable = await fileHandle.createWritable();
-      await writable.write(blob);
-      await writable.close();
-      return;
-    } catch(e){ console.warn('Direct save failed', e); }
-  }
-  // Fallback: normal browser download
-  var url = URL.createObjectURL(blob);
-  var a = document.createElement('a');
-  a.href = url; a.download = filename; a.click();
+  genOutputs[filename] = content;
 }
 
 function getBandKey(band){
@@ -3906,6 +3942,7 @@ function ensurePyodide(){
 async function generate(){
   var btn=document.getElementById('genBtn'),sp=document.getElementById('spinner'),bt=document.getElementById('genBtnTxt');
   document.getElementById('dlSection').innerHTML='';
+  genOutputs = {};
   if(!ciqInput.files[0]){alert('Please upload a CIQ Excel file');return;}
   if(!sel.fga&&!sel.nds){alert('Please select at least one script');return;}
   btn.disabled=true;sp.style.display='block';bt.textContent='Processing...';
@@ -3917,7 +3954,6 @@ async function generate(){
 	var missingSheets = requiredSheets.filter(function(name){ return !wb.SheetNames.includes(name); });
 	if(missingSheets.length){ alert('CIQ validation failed. Missing sheet(s): ' + missingSheets.join(', ')); return; }
     var rs=function(name){var s=wb.Sheets[name];return s?XLSX.utils.sheet_to_json(s,{header:1,defval:''}):[]; };
-    var folderPath=document.getElementById('folderPath').value.trim();
 
     // Site ID
     var mmi=rs('Mixed Mode Info'),SITE_ID='';
@@ -4101,8 +4137,9 @@ async function generate(){
       bt.textContent='Running NDS Delta...';
       pyodide.FS.writeFile('/ciq_input.xlsx', new Uint8Array(ab));
       // HiCap and iDAS are now auto-detected from the CIQ itself inside
-      // NDS_con.py; node_options is kept only for forward-compatibility.
-      var nodeOptions={};
+      // NDS_con.py; node_options now also carries the Per-Node Band Flags
+      // (NODE_BANDS) selected in Step 2.
+      var nodeOptions={NODE_BANDS:getNodeBands()};
       pyodide.globals.set('excel_path_js','/ciq_input.xlsx');
       pyodide.globals.set('node_options_js', pyodide.toPy(nodeOptions));
       var resultProxy=await pyodide.runPythonAsync('NDS_delta_generator(excel_path_js, node_options_js)');
@@ -4131,8 +4168,17 @@ async function generate(){
  }
 
 
-    var folder=pickedFolderHandle?pickedFolderHandle.name:'Downloads';
     document.getElementById('dlSection').innerHTML='';
+
+    var outNames=Object.keys(genOutputs);
+    if(outNames.length){
+      var zip=new JSZip();
+      outNames.forEach(function(fn){ zip.file(fn, genOutputs[fn]); });
+      var zipBlob=await zip.generateAsync({type:'blob'});
+      var zipName=(SITE_ID||'delta')+'_delta_scripts.zip';
+      saveAs(zipBlob, zipName);
+
+    }
 
   } catch(err){alert('Error: '+err.message);console.error(err);}
   finally{btn.disabled=false;sp.style.display='none';bt.textContent='\u26a1 Generate Scripts';}
