@@ -1412,7 +1412,7 @@ FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},System
 featureState : {"DEACTIVATED" if is_g2 else "ACTIVATED"}
 
 """)
-	
+
             if resolved_type == "tmbb":
                 script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012477"
@@ -2462,7 +2462,9 @@ dlCgSwitchMode : ENABLED
             is_fg_g3 = (site_gnb_df["DU type"].astype(str).str.contains(g3_pattern, na=False).any())
 
 
-            
+            is_g2 = is_lte_g2 or is_fg_g2
+            is_g3 = is_lte_g3 or is_fg_g3
+
             if pd.isna(siteid):
                 continue
 
