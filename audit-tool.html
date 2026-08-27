@@ -1346,10 +1346,6 @@ FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},System
 featureState : ACTIVATED
 
 set
-FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012606"
-featureState : ACTIVATED
-
-set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4011809"
 featureState : DEACTIVATED
 
@@ -1398,6 +1394,25 @@ FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeB
 tInactivityTimer : 6
 
 """)
+            if resolved_type == "nr":
+                script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012606"
+featureState : {"DEACTIVATED" if (has_hb  or is_g2) else "ACTIVATED"}
+
+""")
+            elif resolved_type == "tmbb":
+                script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012606"
+featureState : ACTIVATED
+
+""")
+            elif resolved_type == "mmbb":
+                script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012606"
+featureState : {"DEACTIVATED" if is_g2 else "ACTIVATED"}
+
+""")
+	
             if resolved_type == "tmbb":
                 script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012477"
