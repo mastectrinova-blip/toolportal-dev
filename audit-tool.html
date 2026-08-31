@@ -1399,10 +1399,18 @@ tInactivityTimer : 6
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012606"
 featureState : {"DEACTIVATED" if (has_hb  or is_g2) else "ACTIVATED"}
 
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012558"
+featureState : {"DEACTIVATED" if has_hb else "ACTIVATED"}
+
 """)
             elif resolved_type == "tmbb":
                 script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012606"
+featureState : ACTIVATED
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012558"
 featureState : ACTIVATED
 
 """)
@@ -1410,6 +1418,10 @@ featureState : ACTIVATED
                 script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012606"
 featureState : {"DEACTIVATED" if is_g2 else "ACTIVATED"}
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012558"
+featureState : ACTIVATED
 
 """)
 
@@ -2158,7 +2170,17 @@ a5Threshold1Rsrq : -195
 """)
 
 
+                if resolved_type == "lte":
+                    script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell},UeMeasControl=1,ReportConfigB1GUtra=1"
+b1ThresholdRsrp : {"-110" if lte_anchor_hb else "-113"}
+""")
+                elif resolved_type == "mmbb" or resolved_type == "tmbb":
+                    script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell},UeMeasControl=1,ReportConfigB1GUtra=1"
+b1ThresholdRsrp : -113
 
+""")
 
 
 
@@ -2406,6 +2428,11 @@ rsrpPCellCandidateB2 : {{threshold2EUtra=-140}}
 set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBCUCPFunction=1,TrafficSteering=1,TrStSaCellProfile={cell},TrStSaCellProfileUeCfg=FN_SA"
 mlcEnabled : {"True" if bw<= 30 else "False"}
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBCUCPFunction=1,TrafficSteering=1,TrStSaCellProfile={cell},TrStSaCellProfileUeCfg=FN_SA"
+rsrpPCellCandidateB2 : {timeToTrigger=640,threshold1=-29}
+rsrpPCellCandidate : {threshold2=-104}
 
 """)
 
