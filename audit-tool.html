@@ -2431,8 +2431,8 @@ mlcEnabled : {"True" if bw<= 30 else "False"}
 
 set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBCUCPFunction=1,TrafficSteering=1,TrStSaCellProfile={cell},TrStSaCellProfileUeCfg=FN_SA"
-rsrpPCellCandidateB2 : {timeToTrigger=640,threshold1=-29}
-rsrpPCellCandidate : {threshold2=-104}
+rsrpPCellCandidateB2 : {{timeToTrigger=640,threshold1=-29}}
+rsrpPCellCandidate : {{threshold2=-104}}
 
 """)
 
