@@ -1786,8 +1786,7 @@ FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeB
 timeToTriggerA6 : 1024
 
 """)
-
-                if cell in b29_cells:
+                else :
                     script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell},UeMeasControl=1,ReportConfigSCellA1A2=1"
 a1a2ThresholdRsrq : -165
@@ -1801,6 +1800,7 @@ FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeB
 timeToTriggerA6 : 40
 
 """)
+
 
                 if scell_count > 0 and cell not in b29_cells:
                     script.append(f"""set
