@@ -1442,7 +1442,138 @@ FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},System
 featureState : ACTIVATED
 
 """)
-        
+            # ============================================================
+            # G3 + G4 - TMBB / MMBB - NEW PARAMETERS
+            # ============================================================
+
+            # G3 DU Types
+            G3_suffixes = ("6651", "6648", "6339", "6337", "6507")
+
+            # G4 DU Types
+            G4_suffixes = ("6672", "6507")
+
+            # G3 OR G4
+            G3G4_suffixes = G3_suffixes + G4_suffixes
+            G3G4_pattern = "|".join(G3G4_suffixes)
+
+            is_lte_g3g4 = (
+                site_enb_df["DU type"]
+                .astype(str)
+                .str.contains(G3G4_pattern, case=False, na=False)
+                .any()
+            )
+
+            is_fg_g3g4 = (
+                site_gnb_df["DU type"]
+                .astype(str)
+                .str.contains(G3G4_pattern, case=False, na=False)
+                .any()
+            )
+
+            is_g3g4 = is_lte_g3g4 or is_fg_g3g4
+
+
+            # ============================================================
+            # 5G CONDITIONS
+            # ============================================================
+
+            # NR_MB = PCS / AWS
+            has_nr_mb = (
+                site_fg_df["Operating Band"]
+                .astype(str)
+                .str.strip()
+                .str.upper()
+                .isin(["PCS", "AWS"])
+                .any()
+            )
+
+            # NR_FDD = 850 / PCS / AWS
+            has_nr_fdd = (
+                site_fg_df["Operating Band"]
+                .astype(str)
+                .str.strip()
+                .str.upper()
+                .isin(["850", "PCS", "AWS"])
+                .any()
+            )
+
+
+            # ============================================================
+            # RADIO CHECK - ONLY FOR N77 / C-BAND-DOD
+            # ============================================================
+
+            has_n77_radio_4435 = (
+                not site_n77.empty
+                and site_n77["RRU Type"]
+                .astype(str)
+                .str.contains("4435", case=False, na=False)
+                .any()
+            )
+
+            has_n77_radio_4461 = (
+                not site_n77.empty
+                and site_n77["RRU Type"]
+                .astype(str)
+                .str.contains("4461", case=False, na=False)
+                .any()
+            )
+
+
+            # ============================================================
+            # TMBB - G3 OR G4
+            # ============================================================
+
+            if is_g3g4 and resolved_type == "tmbb":
+                script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,SubscriberGroupProfile=1"
+profilePriority : 10
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012493"
+featureState : ACTIVATED
+
+""")
+
+
+            # ============================================================
+            # MMBB - G3 OR G4
+            # ============================================================
+
+            if is_g3g4 and resolved_type == "mmbb":
+
+                # MMBB - non-SA
+                if not is_sa:
+                    script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012493"
+featureState : DEACTIVATED
+
+""")
+
+                # MMBB - NR_MB + N77 + Radio 4435
+                elif has_nr_mb and has_n77 and has_n77_radio_4435:
+                    script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012493"
+featureState : DEACTIVATED
+
+""")
+
+                # MMBB - NR_MB + N77 + Radio 4461
+                elif has_nr_mb and has_n77 and has_n77_radio_4461:
+                    script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012493"
+featureState : ACTIVATED
+
+""")
+
+                # MMBB - SA + NR_FDD or VoNR
+                elif is_sa and (has_nr_fdd or is_vonr):
+                    script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012493"
+featureState : ACTIVATED
+
+""")
+
+
             if is_catm_node:
                 script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,Paging=1"
@@ -2548,8 +2679,47 @@ dlCgSwitchMode : ENABLED
             has_n77 = not site_n77.empty
             has_non_n77 = not site_non_n77.empty
             has_hb = not site_n260.empty
-
-
+            
+           
+            # ============================================================
+            # G3 - TMBB / MMBB suffix conditions
+            # ============================================================
+            
+            # NR MB = PCS / AWS
+            has_nr_mb = (
+                site_fg_df["Operating Band"]
+                .astype(str)
+                .str.strip()
+                .str.upper()
+                .isin(["PCS", "AWS"])
+                .any()
+            )
+            
+            # NR FDD = 850 / PCS / AWS
+            has_nr_fdd = (
+                site_fg_df["Operating Band"]
+                .astype(str)
+                .str.strip()
+                .str.upper()
+                .isin(["850", "PCS", "AWS"])
+                .any()
+            )
+            
+            # Radio check ONLY inside n77 / C-Band-DoD
+            has_n77_radio_4435 = (
+                site_n77["RRU Type"]
+                .astype(str)
+                .str.contains("4435", case=False, na=False)
+                .any()
+            )
+            
+            has_n77_radio_4461 = (
+                site_n77["RRU Type"]
+                .astype(str)
+                .str.contains("4461", case=False, na=False)
+                .any()
+            )
+            
             # --------------------------------
             # Bandwidth Classification
             # --------------------------------
