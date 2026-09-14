@@ -1442,6 +1442,11 @@ FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},System
 featureState : ACTIVATED
 
 """)
+
+# ============================================================
+# Chandan's work
+# ============================================================
+
             # ============================================================
             # G3 + G4 - TMBB / MMBB - NEW PARAMETERS
             # ============================================================
@@ -1572,7 +1577,9 @@ FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},System
 featureState : ACTIVATED
 
 """)
-
+# ============================================================ #
+# Chandan's work end                                           #
+# ============================================================ #
 
             if is_catm_node:
                 script.append(f"""set
@@ -2346,12 +2353,19 @@ set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBDUFunction=1,NRCellDU={cell}"
 pdcchSymbConfig : ADAPT_MAX_2
 
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBCUCPFunction=1,TrafficSteering=1,TrStPSCellProfile={cell},TrStPSCellProfileUeCfg=Base"
+rsrpCandidateA5 : {{threshold2=-156}}
+
 """)
                     else:
                         script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBCUCPFunction=1,NRCellCU={cell}"
 hiPrioDetEnabled : True
 
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBCUCPFunction=1,TrafficSteering=1,TrStPSCellProfile={cell},TrStPSCellProfileUeCfg=Base"
+rsrpCandidateA5 : {{threshold2=-100}}
 """)
 
 
