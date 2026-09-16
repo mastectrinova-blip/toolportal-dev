@@ -599,7 +599,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
             </select>
           </div>
 
-          <!-- ── SECTION 1: AREA LITE ── -->
+<!-- ── SECTION 1: AREA LITE ── -->
           <div id="nrarea_areaLiteSection">
 
             <!-- View Parameters Covered (Area Lite) -->
@@ -641,17 +641,74 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
           <!-- ── SECTION 2: GLOBAL LOCAL ── -->
           <div id="nrarea_globalLocalSection" style="display:none;">
 
-            <!-- View Parameters Covered (Global Local) -->
+            <!-- View Parameters Covered & Mode Selection (Global Local) -->
             <div style="margin-bottom:22px;">
-              <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-                <input type="checkbox" id="nrarea_showParamsGlobal" onchange="nrareaToggleParams('Global')" style="width:16px;height:16px;cursor:pointer;accent-color:var(--accent);">
-                <label for="nrarea_showParamsGlobal" style="font-size:13px;font-weight:600;color:var(--text);cursor:pointer;margin:0;">View Parameters Covered</label>
+              <div style="display:flex;align-items:center;gap:24px;margin-bottom:8px;">
+                
+                <div style="display:flex;align-items:center;gap:8px;">
+                  <input type="checkbox" id="nrarea_showParamsGlobal" onchange="nrareaToggleParams('Global')" style="width:16px;height:16px;cursor:pointer;accent-color:var(--accent);">
+                  <label for="nrarea_showParamsGlobal" style="font-size:13px;font-weight:600;color:var(--text);cursor:pointer;margin:0;">View Parameters Covered</label>
+                </div>
+
+                <!-- N2E & Legacy Options -->
+                <div style="display:flex;align-items:center;gap:16px;border-left:2px solid var(--border);padding-left:24px;">
+                  <label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--text);cursor:pointer;">
+                    <input type="radio" name="gl_mode" value="N2E" checked style="width:16px;height:16px;cursor:pointer;accent-color:var(--accent);">
+                    N2E
+                  </label>
+                  <label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--text);cursor:pointer;">
+                    <input type="radio" name="gl_mode" value="Legacy" style="width:16px;height:16px;cursor:pointer;accent-color:var(--accent);">
+                    Legacy
+                  </label>
+                </div>
+
               </div>
               <div id="nrarea_paramsBoxGlobal" style="display:none;background:#f0f6ff;border:1px solid var(--border);border-radius:8px;padding:12px;flex-wrap:wrap;gap:8px;margin-top:4px;max-height:200px;overflow-y:auto;">
                 <!-- filled by JS -->
               </div>
             </div>
 
+            <!-- Global Local Audit Report Upload -->
+            <div style="margin-bottom:4px;">
+              <div class="section-title" style="margin-bottom:8px;">Input Files* <span style="font-weight:400;font-size:12px;color:var(--muted);">(Global Local Audit Report)</span></div>
+              <div style="display:flex;align-items:stretch;">
+                <div id="nrarea_globalText" style="flex:1;padding:9px 12px;border:1.5px solid var(--border);border-right:none;border-radius:8px 0 0 8px;font-size:13px;color:var(--muted);background:#fcfcfc;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">No file selected</div>
+                <button onclick="document.getElementById('nrarea_globalFile').click()" style="background:#5bc0de;color:white;border:1px solid #46b8da;border-radius:0 8px 8px 0;padding:0 18px;font-size:20px;font-weight:bold;cursor:pointer;transition:background 0.15s;" onmouseover="this.style.background='#31b0d5'" onmouseout="this.style.background='#5bc0de'">+</button>
+                <input type="file" id="nrarea_globalFile" accept=".xlsx,.xls" style="display:none;">
+              </div>
+            </div>
+          </div><!-- /#nrarea_globalLocalSection -->
+		  
+          <!-- ── SECTION 2: GLOBAL LOCAL ── -->
+          <div id="nrarea_globalLocalSection" style="display:none;">
+
+<!-- View Parameters Covered & Mode Selection (Global Local) -->
+            <div style="margin-bottom:22px;">
+              <div style="display:flex;align-items:center;gap:24px;margin-bottom:8px;">
+                
+                <div style="display:flex;align-items:center;gap:8px;">
+                  <input type="checkbox" id="nrarea_showParamsGlobal" onchange="nrareaToggleParams('Global')" style="width:16px;height:16px;cursor:pointer;accent-color:var(--accent);">
+                  <label for="nrarea_showParamsGlobal" style="font-size:13px;font-weight:600;color:var(--text);cursor:pointer;margin:0;">View Parameters Covered</label>
+                </div>
+
+                <!-- N2E & Legacy Options with Dynamic UI Trigger -->
+                <div style="display:flex;align-items:center;gap:16px;border-left:2px solid var(--border);padding-left:24px;">
+                  <label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--text);cursor:pointer;">
+                    <input type="radio" name="gl_mode" value="N2E" checked onchange="updateGlobalLocalParamsUI()" style="width:16px;height:16px;cursor:pointer;accent-color:var(--accent);">
+                    N2E
+                  </label>
+                  <label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--text);cursor:pointer;">
+                    <input type="radio" name="gl_mode" value="Legacy" onchange="updateGlobalLocalParamsUI()" style="width:16px;height:16px;cursor:pointer;accent-color:var(--accent);">
+                    Legacy
+                  </label>
+                </div>
+
+              </div>
+              <div id="nrarea_paramsBoxGlobal" style="display:none;background:#f0f6ff;border:1px solid var(--border);border-radius:8px;padding:12px;flex-wrap:wrap;gap:8px;margin-top:4px;max-height:200px;overflow-y:auto;">
+                <!-- filled by JS -->
+              </div>
+            </div>
+			
             <!-- Global Local Audit Report Upload -->
             <div style="margin-bottom:4px;">
               <div class="section-title" style="margin-bottom:8px;">Input Files* <span style="font-weight:400;font-size:12px;color:var(--muted);">(Global Local Audit Report)</span></div>
@@ -871,6 +928,163 @@ voicePrio : 0
 set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext=XXSITEIDXX,ManagedElement=XXSITEIDXX,ENodeBFunction=1,EUtranCellFDD=XXGAMMASECTORXX,EUtranFreqRelation=5330"
 voicePrio : 0</script>
+
+<!-- Global Local Parameter Search (Python) -->
+<script id="PY_GLOBAL_LOCAL" type="text/plain">import io
+import openpyxl
+from openpyxl.styles import PatternFill, Font, Alignment, Border, Side
+
+def run_global_local_search(file_bytes, mode="N2E"):
+    
+    # 1. SELECT PARAMETER LIST BASED ON MODE
+    if mode == "N2E":
+        search_params = [
+            'cellRange','qRxLevMin','CRSGAIN','CXC4011966','CXC4012607',
+            'CXC4011809','dscp','servOrPrioTriggeredIFHo','rohcForUlDataEnabled',
+            'pZeroNomPucch','pZeroNomPuschGrant','rachPreambleRecTargetPower',
+            'a3offset','a5Threshold2Rsrp','a5Threshold2Rsrq','threshXLowQ',
+            'reportAmountA5','lowHighFreqPrioClassification',
+            'dlInterferenceManagementActive','thresholdRsrp',
+            'interFreqHoHigherPrioEndc','servOrPrioIFHoSetupBearer',
+            'spifhoDedicatedReportConfig','interFreqHoHigherPrioMeas',
+            'interFreqHoHigherPrioRre','interFreqHoHigherPrioEnabled',
+            'catm1SupportEnabled','dlCalibrationEnabled','bothInterA3RsrpRsrqCheck',
+            'timeToTriggerA2OutSearch','lbRateOffsetLoadThreshold',
+            'lowPrioMeasThresh','estCellCapUsableFraction',
+            'diffAdmCtrlFilteringProfRef','configuredGrantConfMode','lbCeiling',
+            'drxProfileEnabled','additionalPlmnReservedList','endcAllowedPlmnList',
+            'selectedKeyExchanges','cellreselectionpriority','EutranfallbackPrioEc',
+            'Voiceprio','sNonIntraSearchQ','threshServingLowQ',
+            'freqPrioListNR.cellReselectionPriority',
+            'freqPrioListNR.cellReselectionSubPriority','freqPrioListNR.nrArfcn'
+        ]
+    elif mode == "Legacy":
+        search_params = [
+            'crsGain', 'qRxLevMin', 'Cellrange', 'cellSubscriptionCapacity',
+            'dscp', 'pdschTypeBGain', 'dlMaxRetxThreshold', 'selectionProcessMode',
+            'tRrcConnectionReconfiguration', 'compensationDelay', 'eDrxAllowed',
+            'prachFreqSharing', 'drxActiveBr', 'sIntraSearchDeltaP',
+            'catmRarLoadControlEnabled', 'a2OuterSearchThrRsrpOffset',
+            'highestSupportedCeLevelBr', 'mappingInfoCe mappingInfoSIB3',
+            'mappingInfoCe mappingInfoSIB4', 'dataInactTimerBr dataInactTimerBrCe0',
+            'dataInactTimerBr dataInactTimerBrCe1', 'interFreqHoHigherPrioEnabled',
+            'eDrxUeType', 'ueMeasurementsActiveBr', 'sIntraSearchDeltaP',
+            'a3offset', 'srsPeriodicity', 'catm1SupportEnabled',
+            'dlCalibrationEnabled', 'drxProfileEnabled',
+            'frequencyDomainPara{rimRSCommonCarrierRefPoint}',
+            'pZeroNominalPuschBr', 'pZeroNominalPucchBr'
+        ]
+    else:
+        search_params = []
+
+    # 2. DEFINE EXCEL COLORS AND FONTS
+    FILL_YELLOW   = PatternFill(start_color='FFFF00', end_color='FFFF00', fill_type='solid')
+    FILL_GREEN    = PatternFill(start_color='C6EFCE', end_color='C6EFCE', fill_type='solid')
+    FILL_SKYBLUE  = PatternFill(start_color='87CEEB', end_color='87CEEB', fill_type='solid')
+    FILL_RED      = PatternFill(start_color='FFCCCC', end_color='FFCCCC', fill_type='solid')
+    FILL_BLUE_HDR = PatternFill(start_color='4472C4', end_color='4472C4', fill_type='solid')
+    
+    FONT_HDR       = Font(bold=True, color='FFFFFF', name='Calibri', size=11)
+    FONT_MATCH_N2E = Font(bold=True, color='006100', name='Calibri', size=11)
+    FONT_MATCH_LEG = Font(bold=True, color='003366', name='Calibri', size=11)
+    FONT_NOMATCH   = Font(color='9C0006', name='Calibri', size=11)
+    
+    ALIGN_CENTER  = Alignment(horizontal='center', vertical='center')
+    THIN          = Side(style='thin', color='D3D3D3')
+    BORDER        = Border(left=THIN, right=THIN, top=THIN, bottom=THIN)
+    BLANK_FILLS   = {'00000000','00FFFFFF','FFFFFFFF',''}
+
+    def is_blank_fill(cell):
+        try:
+            if not cell.fill or cell.fill.fill_type in (None, 'none'):
+                return True
+            rgb = cell.fill.fgColor.rgb
+            if type(rgb) is str:
+                return rgb in BLANK_FILLS
+            return True
+        except:
+            return True
+
+    # 3. PREPARE THE EXCEL SHEET
+    wb = openpyxl.load_workbook(filename=io.BytesIO(file_bytes))
+    sheet_name = 'Discrepancies'
+    if sheet_name not in wb.sheetnames:
+        raise Exception(f"Sheet '{sheet_name}' not found. Available: {', '.join(wb.sheetnames)}")
+
+    ws = wb[sheet_name]
+    header_row = 12
+    max_col = ws.max_column
+    new_col = max_col + 1
+
+    # Create the "Search Result" header
+    hdr_cell = ws.cell(row=header_row, column=new_col)
+    hdr_cell.value = 'Search Result'
+    hdr_cell.fill = FILL_BLUE_HDR
+    hdr_cell.font = FONT_HDR
+    hdr_cell.alignment = ALIGN_CENTER
+    hdr_cell.border = BORDER
+
+    # Find the parameter column dynamically
+    param_col = None
+    for col in range(1, max_col + 1):
+        if ws.cell(row=header_row, column=col).value == 'Parameter':
+            param_col = col
+            break
+    
+    if not param_col:
+        raise Exception(f'"Parameter" column not found in row {header_row}.')
+
+    matched = 0
+    total = 0
+    search_params_lower = [p.lower() for p in search_params]
+
+    # 4. LOOP THROUGH ROWS AND APPLY HIGHLIGHTING
+    for row in range(header_row + 1, ws.max_row + 1):
+        param_val = str(ws.cell(row=row, column=param_col).value or '').strip()
+        if not param_val or param_val in ('None', 'nan', ''):
+            continue
+        
+        total += 1
+        param_val_lower = param_val.lower()
+        hit = any(p in param_val_lower for p in search_params_lower)
+        
+        res = ws.cell(row=row, column=new_col)
+        res.alignment = ALIGN_CENTER
+        res.border = BORDER
+
+        if hit:
+            res.value = 'Match'
+            
+            # Decide row highlight color based on N2E vs Legacy
+            if mode == "Legacy":
+                res.fill = FILL_SKYBLUE
+                res.font = FONT_MATCH_LEG
+                row_highlight = FILL_SKYBLUE  # Legacy rows get painted Sky Blue
+            else:
+                res.fill = FILL_GREEN
+                res.font = FONT_MATCH_N2E
+                row_highlight = FILL_YELLOW   # N2E rows get painted Yellow
+                
+            # Loop backwards through the row to paint empty cells the chosen color
+            for col in range(1, new_col):
+                cell = ws.cell(row=row, column=col)
+                if is_blank_fill(cell):
+                    cell.fill = row_highlight
+            matched += 1
+        else:
+            # If no match, mark Red and leave the row untouched
+            res.value = 'No Match'
+            res.fill = FILL_RED
+            res.font = FONT_NOMATCH
+
+    ws.column_dimensions[ws.cell(row=header_row, column=new_col).column_letter].width = 15
+
+    # 5. EXPORT THE FILE
+    out_stream = io.BytesIO()
+    wb.save(out_stream)
+    out_stream.seek(0)
+    return out_stream.read(), matched, total
+</script>
 
 <!-- NDS Delta generator (verbatim Python, executed in-browser via Pyodide) -->
 <script id="PY_NDS_CON" type="text/plain">import os
@@ -1442,11 +1656,6 @@ FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},System
 featureState : ACTIVATED
 
 """)
-
-# ============================================================
-# Chandan's work
-# ============================================================
-
             # ============================================================
             # G3 + G4 - TMBB / MMBB - NEW PARAMETERS
             # ============================================================
@@ -1577,9 +1786,7 @@ FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},System
 featureState : ACTIVATED
 
 """)
-# ============================================================ #
-# Chandan's work end                                           #
-# ============================================================ #
+
 
             if is_catm_node:
                 script.append(f"""set
@@ -2353,19 +2560,12 @@ set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBDUFunction=1,NRCellDU={cell}"
 pdcchSymbConfig : ADAPT_MAX_2
 
-set
-FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBCUCPFunction=1,TrafficSteering=1,TrStPSCellProfile={cell},TrStPSCellProfileUeCfg=Base"
-rsrpCandidateA5 : {{threshold2=-156}}
-
 """)
                     else:
                         script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBCUCPFunction=1,NRCellCU={cell}"
 hiPrioDetEnabled : True
 
-set
-FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBCUCPFunction=1,TrafficSteering=1,TrStPSCellProfile={cell},TrStPSCellProfileUeCfg=Base"
-rsrpCandidateA5 : {{threshold2=-100}}
 """)
 
 
@@ -4157,13 +4357,28 @@ function ensurePyodide(){
     var pyodide=await loadPyodide();
     await pyodide.loadPackage(['pandas','micropip']);
     await pyodide.runPythonAsync('import micropip\nawait micropip.install("openpyxl")');
-    var pySrc=document.getElementById('PY_NDS_CON').textContent;
-	var cmeditSrc=document.getElementById('cmedit').textContent;   // NEW
-    var repairSrc=document.getElementById('PY_EXCEL_REPAIR').textContent;
+    
+    // Grab the Python code from the HTML script tags
+    var pySrc = document.getElementById('PY_NDS_CON').textContent;
+    var cmeditSrc = document.getElementById('cmedit').textContent;
+    var repairSrc = document.getElementById('PY_EXCEL_REPAIR').textContent;
+    var globalLocalSrc = document.getElementById('PY_GLOBAL_LOCAL').textContent; // NEW
+    
+    // Write the Python code to Pyodide's virtual file system
     pyodide.FS.writeFile('/excel_repair.py', repairSrc);
     pyodide.FS.writeFile('/NDS_con.py', pySrc);
-	pyodide.FS.writeFile('/cmedit.py', cmeditSrc);
-	await pyodide.runPythonAsync('import sys\nif "/" not in sys.path: sys.path.insert(0, "/")\nfrom NDS_con import NDS_delta_generator\nfrom cmedit import cmedit_generator');
+    pyodide.FS.writeFile('/cmedit.py', cmeditSrc);
+    pyodide.FS.writeFile('/global_local.py', globalLocalSrc); // NEW
+    
+    // Import the functions so they are ready to use
+    await pyodide.runPythonAsync(
+      'import sys\n' +
+      'if "/" not in sys.path: sys.path.insert(0, "/")\n' +
+      'from NDS_con import NDS_delta_generator\n' +
+      'from cmedit import cmedit_generator\n' +
+      'from global_local import run_global_local_search\n' // NEW
+    );
+    
     return pyodide;
   })();
   return pyodideReadyPromise;
@@ -4878,13 +5093,16 @@ window.nrareaToggleConvType = function(){
   btn.textContent = type==='area_lite' ? 'Convert Scripts' : 'Process Report';
   nrareaReset();
 };
-
-window.nrareaToggleParams = function(section){
-  var box=document.getElementById('nrarea_paramsBox'+section);
-  var chk=document.getElementById('nrarea_showParams'+section);
-  box.style.display = chk.checked ? 'flex' : 'none';
+window.nrareaToggleParams = function(section) {
+  var box = document.getElementById('nrarea_paramsBox' + section);
+  var chk = document.getElementById('nrarea_showParams' + section);
+  if (box && chk) {
+    box.style.display = chk.checked ? 'flex' : 'none';
+    if (chk.checked && section === 'Global' && typeof window.updateGlobalLocalParamsUI === 'function') {
+      window.updateGlobalLocalParamsUI();
+    }
+  }
 };
-
 window.nrareaCheckReady = function(){
   var type=document.getElementById('nrarea_convType').value;
   var btn=document.getElementById('nrarea_convertBtn');
@@ -4992,62 +5210,67 @@ function pt_runRulesAndDownload(blocks,ciq){
 }
 
 // ── GLOBAL LOCAL ENGINE (ExcelJS) ───────────────────────────────
-async function pt_runGlobalLocalSearch(){
-  try{
-    if(!window.ExcelJS) throw new Error('ExcelJS library not available.');
-    var wb=new ExcelJS.Workbook();
-    await wb.xlsx.load(pt_globalFileData);
-    var ws=wb.getWorksheet('Discrepancies');
-    if(!ws) throw new Error('Sheet "Discrepancies" not found. Available: '+wb.worksheets.map(function(w){return w.name;}).join(', '));
-    var headerRowIdx=12,paramColIdx=-1;
-    ws.getRow(headerRowIdx).eachCell(function(cell,col){if(cell.value==='Parameter')paramColIdx=col;});
-    if(paramColIdx===-1) throw new Error('"Parameter" column not found in row '+headerRowIdx+'.');
-    var newColIdx=ws.columnCount+1;
-    var hdrCell=ws.getCell(headerRowIdx,newColIdx);
-    hdrCell.style=Object.assign({},hdrCell.style);
-    hdrCell.value='Search Result';
-    hdrCell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF4472C4'}};
-    hdrCell.font={bold:true,color:{argb:'FFFFFFFF'},name:'Calibri',size:11};
-    hdrCell.alignment={horizontal:'center',vertical:'center'};
-    hdrCell.border={top:{style:'thin',color:{argb:'FFD3D3D3'}},left:{style:'thin',color:{argb:'FFD3D3D3'}},bottom:{style:'thin',color:{argb:'FFD3D3D3'}},right:{style:'thin',color:{argb:'FFD3D3D3'}}};
-    ws.getColumn(newColIdx).width=15;
-    var matched=0,total=0;
-    var uniqueParams=[...new Set(PT_GLOBAL_PARAMS)];
-    for(var rowIdx=headerRowIdx+1;rowIdx<=ws.rowCount;rowIdx++){
-      var row=ws.getRow(rowIdx),paramCell=row.getCell(paramColIdx),paramVal='';
-      if(paramCell.value!==null&&paramCell.value!==undefined){
-        if(typeof paramCell.value==='object'&&paramCell.value.richText){paramVal=paramCell.value.richText.map(function(rt){return rt.text;}).join('');}
-        else if(typeof paramCell.value==='object'&&paramCell.value.result!==undefined){paramVal=paramCell.value.result.toString();}
-        else{paramVal=paramCell.value.toString();}
-      }
-      paramVal=paramVal.trim();
-      if(!paramVal||paramVal==='None'||paramVal==='nan')continue;
-      total++;
-      var isHit=uniqueParams.some(function(p){return paramVal.toLowerCase().includes(p.toLowerCase());});
-      var resCell=row.getCell(newColIdx);
-      resCell.style=Object.assign({},resCell.style);
-      resCell.alignment={horizontal:'center',vertical:'center'};
-      resCell.border=hdrCell.border;
-      if(isHit){
-        resCell.value='Match';resCell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFC6EFCE'}};resCell.font={bold:true,color:{argb:'FF006100'},name:'Calibri',size:11};
-        for(var c=1;c<newColIdx;c++){
-          var cell=row.getCell(c);var isBlank=true;
-          if(cell.fill&&cell.fill.type==='pattern'&&cell.fill.pattern!=='none'){var argb=(cell.fill.fgColor&&cell.fill.fgColor.argb)?cell.fill.fgColor.argb.toUpperCase():'';if(!['00000000','00FFFFFF','FFFFFFFF',''].includes(argb))isBlank=false;}
-          if(isBlank){cell.style=Object.assign({},cell.style);cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFFFFF00'}};}
-        }
-        matched++;
-      } else {
-        resCell.value='No Match';resCell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFFFCCCC'}};resCell.font={color:{argb:'FF9C0006'},name:'Calibri',size:11};
-      }
-    }
-    var buffer=await wb.xlsx.writeBuffer();
-    var blob=new Blob([buffer],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
-    var fname=document.getElementById('nrarea_globalText').textContent.replace(/\.[^/.]+$/,'')+'_SearchResult.xlsx';
-    saveAs(blob,fname);
-    nrareaShowStatus('Successfully processed! Matched '+matched+' of '+total+' parameters.',true);
-  }catch(err){nrareaShowStatus('Error: '+err.message,false);console.error(err);}
-}
+// ── GLOBAL LOCAL ENGINE (Python via Pyodide) ──────────────────────────
+// ── DYNAMIC PARAMETER UI UPDATER ──
+const gl_paramsN2E = ['cellRange','qRxLevMin','CRSGAIN','CXC4011966','CXC4012607','CXC4011809','dscp','servOrPrioTriggeredIFHo','rohcForUlDataEnabled','pZeroNomPucch','pZeroNomPuschGrant','rachPreambleRecTargetPower','a3offset','a5Threshold2Rsrp','a5Threshold2Rsrq','threshXLowQ','reportAmountA5','lowHighFreqPrioClassification','dlInterferenceManagementActive','thresholdRsrp','interFreqHoHigherPrioEndc','servOrPrioIFHoSetupBearer','spifhoDedicatedReportConfig','interFreqHoHigherPrioMeas','interFreqHoHigherPrioRre','interFreqHoHigherPrioEnabled','catm1SupportEnabled','dlCalibrationEnabled','bothInterA3RsrpRsrqCheck','timeToTriggerA2OutSearch','lbRateOffsetLoadThreshold','lowPrioMeasThresh','estCellCapUsableFraction','diffAdmCtrlFilteringProfRef','configuredGrantConfMode','lbCeiling','drxProfileEnabled','additionalPlmnReservedList','endcAllowedPlmnList','selectedKeyExchanges','cellreselectionpriority','EutranfallbackPrioEc','Voiceprio','sNonIntraSearchQ','threshServingLowQ','freqPrioListNR.cellReselectionPriority','freqPrioListNR.cellReselectionSubPriority','freqPrioListNR.nrArfcn'];
 
+const gl_paramsLegacy = ['crsGain', 'qRxLevMin', 'Cellrange', 'cellSubscriptionCapacity', 'dscp', 'pdschTypeBGain', 'dlMaxRetxThreshold', 'selectionProcessMode', 'tRrcConnectionReconfiguration', 'compensationDelay', 'eDrxAllowed', 'prachFreqSharing', 'drxActiveBr', 'sIntraSearchDeltaP', 'catmRarLoadControlEnabled', 'a2OuterSearchThrRsrpOffset', 'highestSupportedCeLevelBr', 'mappingInfoCe mappingInfoSIB3', 'mappingInfoCe mappingInfoSIB4', 'dataInactTimerBr dataInactTimerBrCe0', 'dataInactTimerBr dataInactTimerBrCe1', 'interFreqHoHigherPrioEnabled', 'eDrxUeType', 'ueMeasurementsActiveBr', 'sIntraSearchDeltaP', 'a3offset', 'srsPeriodicity', 'catm1SupportEnabled', 'dlCalibrationEnabled', 'drxProfileEnabled', 'frequencyDomainPara{rimRSCommonCarrierRefPoint}', 'pZeroNominalPuschBr', 'pZeroNominalPucchBr'];
+
+window.updateGlobalLocalParamsUI = function() {
+  var modeNode = document.querySelector('input[name="gl_mode"]:checked');
+  if (!modeNode) return;
+  var mode = modeNode.value;
+  var box = document.getElementById('nrarea_paramsBoxGlobal');
+  if (!box) return;
+  
+  var listToUse = (mode === 'N2E') ? gl_paramsN2E : gl_paramsLegacy;
+  var htmlStr = '';
+  for (var i = 0; i < listToUse.length; i++) {
+    htmlStr += '<span style="background:#e1f0fa;color:#31708f;padding:5px 12px;border-radius:12px;font-size:12px;font-weight:600;border:1px solid #bce8f1;display:inline-block;">' + listToUse[i] + '</span>';
+  }
+  box.innerHTML = htmlStr;
+};
+
+// Run automatically on page load
+window.addEventListener('DOMContentLoaded', function() {
+  window.updateGlobalLocalParamsUI();
+});
+
+async function pt_runGlobalLocalSearch() {
+  try {
+    nrareaShowStatus('Processing...', true);
+    var pyodide = await ensurePyodide();
+    
+    // 1. Get the selected mode from the UI
+    var selectedMode = document.querySelector('input[name="gl_mode"]:checked').value;
+    
+    // 2. Pass the file and the mode to Python
+    var fileData = new Uint8Array(pt_globalFileData);
+    pyodide.globals.set('input_excel_bytes', fileData);
+    pyodide.globals.set('gl_mode', selectedMode);
+    
+    // 3. Execute Python logic, passing the mode as the second argument
+    var pyResult = await pyodide.runPythonAsync(`
+from global_local import run_global_local_search
+out_bytes, matched, total = run_global_local_search(bytes(input_excel_bytes), gl_mode)
+{"out_bytes": out_bytes, "matched": matched, "total": total}
+    `);
+    
+    var resultObj = pyResult.toJs({dict_converter: Object.fromEntries});
+    pyResult.destroy();
+    
+    // 4. Download file (appending the mode to the filename)
+    var blob = new Blob([resultObj.out_bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    var fname = document.getElementById('nrarea_globalText').textContent.replace(/\.[^/.]+$/, '') + '_' + selectedMode + '_SearchResult.xlsx';
+    saveAs(blob, fname);
+
+    nrareaShowStatus('✅ Successfully processed ' + selectedMode + ' report! (Matched ' + resultObj.matched + ' of ' + resultObj.total + ' parameters)', true);
+
+  } catch(err) {
+    nrareaShowStatus('Error: ' + err.message, false);
+    console.error(err);
+  }
+}
 })(); // end IIFE
 </script>
 </body>
