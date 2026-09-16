@@ -2545,6 +2545,15 @@ b1ThresholdRsrp : -113
                 rru_type = str(r.get("RRU Type"))
                 sa_type = str(r.get("NSA/SA")).strip().upper()
                 bw = r.get("bSChannelBwDL")
+				
+				 # SA sector - rsrpCandidateB2
+                if sa_type == "SA":
+                    script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBCUCPFunction=1,Mcpc=1,McpcPCellProfile={cell},McpcPCellProfileUeCfg=Base"
+rsrpCandidateB2 : {{threshold1=-110}}
+
+""")
+
                 if cell in site_n77["NRCellDU"].values:
                     script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBCUCPFunction=1,Mcpc=1,McpcPSCellProfile={cell},McpcPSCellProfileUeCfg=Base"
