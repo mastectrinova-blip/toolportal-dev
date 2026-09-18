@@ -1748,6 +1748,14 @@ featureState : ACTIVATED
 
 """)
 
+         # TM node with G3/G4 board
+            if is_g3g4 and resolved_type == "tmbb":
+                script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,RadioBearerTable=default,DataRadioBearer=1"
+dlMaxRetxThreshold : 16
+
+""")
+
 
             # ============================================================
             # MMBB - G3 OR G4
