@@ -1980,6 +1980,14 @@ connModePrioPSCell : 7
 
 
 """)
+            else:
+                script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext=xxSiteIDxx,ManagedElement=xxSiteIDxx,GNBCUCPFunction=1,TrafficSteering=1,TrStPSCellProfile=Default,TrStPSCellProfileUeCfg=Base"
+hiPrioDetMeasurementTime : 3000
+hiPrioDetStartTime : 5000
+rsrpCandidateA5 : {{threshold2=-104}}
+
+""")
 
 
             if is_idle:
