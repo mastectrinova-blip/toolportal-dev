@@ -2561,7 +2561,14 @@ b1ThresholdRsrp : -113
                 rru_type = str(r.get("RRU Type"))
                 sa_type = str(r.get("NSA/SA")).strip().upper()
                 bw = r.get("bSChannelBwDL")
-				
+
+				if not is_g2:
+					scrip.append(f"""
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext=xxSITEIDxx,ManagedElement=xxSITEIDxx,GNBDUFunction=1,NRCellDU={cell}"
+rimPdschSlotBlankMode : {"AUTO_MODE" if cell in site_n77["NRCellDU"].values else "DISABLED"}
+
+""")
 				 # SA sector - rsrpCandidateB2
                 if sa_type == "SA":
                     script.append(f"""set
