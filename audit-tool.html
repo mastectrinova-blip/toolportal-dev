@@ -940,7 +940,7 @@ def run_global_local_search(file_bytes, mode="N2E"):
     if mode == "N2E":
         search_params = [
             'cellRange','qRxLevMin','CRSGAIN','CXC4011966','CXC4012607',
-            'CXC4011809','dscp','servOrPrioTriggeredIFHo','rohcForUlDataEnabled',
+            'CXC4011809','servOrPrioTriggeredIFHo','rohcForUlDataEnabled',
             'pZeroNomPucch','pZeroNomPuschGrant','rachPreambleRecTargetPower',
             'a3offset','a5Threshold2Rsrp','a5Threshold2Rsrq','threshXLowQ',
             'reportAmountA5','lowHighFreqPrioClassification',
@@ -961,7 +961,7 @@ def run_global_local_search(file_bytes, mode="N2E"):
     elif mode == "Legacy":
         search_params = [
             'crsGain', 'qRxLevMin', 'Cellrange', 'cellSubscriptionCapacity',
-            'dscp', 'pdschTypeBGain', 'dlMaxRetxThreshold', 'selectionProcessMode',
+             'pdschTypeBGain', 'dlMaxRetxThreshold', 'selectionProcessMode',
             'tRrcConnectionReconfiguration', 'compensationDelay', 'eDrxAllowed',
             'prachFreqSharing', 'drxActiveBr', 'sIntraSearchDeltaP',
             'catmRarLoadControlEnabled', 'a2OuterSearchThrRsrpOffset',
@@ -5088,7 +5088,7 @@ var pt_globalFileData  = null;
 var pt_scriptFileName  = '';
 
 const PT_GLOBAL_PARAMS = [
-  'cellRange','qRxLevMin','CRSGAIN','CXC4011966','CXC4012607','CXC4011809','dscp',
+  'cellRange','qRxLevMin','CRSGAIN','CXC4011966','CXC4012607','CXC4011809',
   'servOrPrioTriggeredIFHo','rohcForUlDataEnabled','pZeroNomPucch','pZeroNomPuschGrant',
   'rachPreambleRecTargetPower','a3offset','a5Threshold2Rsrp','a5Threshold2Rsrq',
   'threshXLowQ','reportAmountA5','lowHighFreqPrioClassification','dlInterferenceManagementActive',
@@ -5259,9 +5259,9 @@ function pt_runRulesAndDownload(blocks,ciq){
 // ── GLOBAL LOCAL ENGINE (ExcelJS) ───────────────────────────────
 // ── GLOBAL LOCAL ENGINE (Python via Pyodide) ──────────────────────────
 // ── DYNAMIC PARAMETER UI UPDATER ──
-const gl_paramsN2E = ['cellRange','qRxLevMin','CRSGAIN','CXC4011966','CXC4012607','CXC4011809','dscp','servOrPrioTriggeredIFHo','rohcForUlDataEnabled','pZeroNomPucch','pZeroNomPuschGrant','rachPreambleRecTargetPower','a3offset','a5Threshold2Rsrp','a5Threshold2Rsrq','threshXLowQ','reportAmountA5','lowHighFreqPrioClassification','dlInterferenceManagementActive','thresholdRsrp','interFreqHoHigherPrioEndc','servOrPrioIFHoSetupBearer','spifhoDedicatedReportConfig','interFreqHoHigherPrioMeas','interFreqHoHigherPrioRre','interFreqHoHigherPrioEnabled','catm1SupportEnabled','dlCalibrationEnabled','bothInterA3RsrpRsrqCheck','timeToTriggerA2OutSearch','lbRateOffsetLoadThreshold','lowPrioMeasThresh','estCellCapUsableFraction','diffAdmCtrlFilteringProfRef','configuredGrantConfMode','lbCeiling','drxProfileEnabled','additionalPlmnReservedList','endcAllowedPlmnList','selectedKeyExchanges','cellreselectionpriority','EutranfallbackPrioEc','Voiceprio','sNonIntraSearchQ','threshServingLowQ','freqPrioListNR.cellReselectionPriority','freqPrioListNR.cellReselectionSubPriority','freqPrioListNR.nrArfcn'];
+const gl_paramsN2E = ['cellRange','qRxLevMin','CRSGAIN','CXC4011966','CXC4012607','CXC4011809','servOrPrioTriggeredIFHo','rohcForUlDataEnabled','pZeroNomPucch','pZeroNomPuschGrant','rachPreambleRecTargetPower','a3offset','a5Threshold2Rsrp','a5Threshold2Rsrq','threshXLowQ','reportAmountA5','lowHighFreqPrioClassification','dlInterferenceManagementActive','thresholdRsrp','interFreqHoHigherPrioEndc','servOrPrioIFHoSetupBearer','spifhoDedicatedReportConfig','interFreqHoHigherPrioMeas','interFreqHoHigherPrioRre','interFreqHoHigherPrioEnabled','catm1SupportEnabled','dlCalibrationEnabled','bothInterA3RsrpRsrqCheck','timeToTriggerA2OutSearch','lbRateOffsetLoadThreshold','lowPrioMeasThresh','estCellCapUsableFraction','diffAdmCtrlFilteringProfRef','configuredGrantConfMode','lbCeiling','drxProfileEnabled','additionalPlmnReservedList','endcAllowedPlmnList','selectedKeyExchanges','cellreselectionpriority','EutranfallbackPrioEc','Voiceprio','sNonIntraSearchQ','threshServingLowQ','freqPrioListNR.cellReselectionPriority','freqPrioListNR.cellReselectionSubPriority','freqPrioListNR.nrArfcn'];
 
-const gl_paramsLegacy = ['crsGain', 'qRxLevMin', 'Cellrange', 'cellSubscriptionCapacity', 'dscp', 'pdschTypeBGain', 'dlMaxRetxThreshold', 'selectionProcessMode', 'tRrcConnectionReconfiguration', 'compensationDelay', 'eDrxAllowed', 'prachFreqSharing', 'drxActiveBr', 'sIntraSearchDeltaP', 'catmRarLoadControlEnabled', 'a2OuterSearchThrRsrpOffset', 'highestSupportedCeLevelBr', 'mappingInfoCe mappingInfoSIB3', 'mappingInfoCe mappingInfoSIB4', 'dataInactTimerBr dataInactTimerBrCe0', 'dataInactTimerBr dataInactTimerBrCe1', 'interFreqHoHigherPrioEnabled', 'eDrxUeType', 'ueMeasurementsActiveBr', 'sIntraSearchDeltaP', 'a3offset', 'srsPeriodicity', 'catm1SupportEnabled', 'dlCalibrationEnabled', 'drxProfileEnabled', 'frequencyDomainPara{rimRSCommonCarrierRefPoint}', 'pZeroNominalPuschBr', 'pZeroNominalPucchBr'];
+const gl_paramsLegacy = ['crsGain', 'qRxLevMin', 'Cellrange', 'cellSubscriptionCapacity', 'pdschTypeBGain', 'dlMaxRetxThreshold', 'selectionProcessMode', 'tRrcConnectionReconfiguration', 'compensationDelay', 'eDrxAllowed', 'prachFreqSharing', 'drxActiveBr', 'sIntraSearchDeltaP', 'catmRarLoadControlEnabled', 'a2OuterSearchThrRsrpOffset', 'highestSupportedCeLevelBr', 'mappingInfoCe mappingInfoSIB3', 'mappingInfoCe mappingInfoSIB4', 'dataInactTimerBr dataInactTimerBrCe0', 'dataInactTimerBr dataInactTimerBrCe1', 'interFreqHoHigherPrioEnabled', 'eDrxUeType', 'ueMeasurementsActiveBr', 'sIntraSearchDeltaP', 'a3offset', 'srsPeriodicity', 'catm1SupportEnabled', 'dlCalibrationEnabled', 'drxProfileEnabled', 'frequencyDomainPara{rimRSCommonCarrierRefPoint}', 'pZeroNominalPuschBr', 'pZeroNominalPucchBr'];
 
 window.updateGlobalLocalParamsUI = function() {
   var modeNode = document.querySelector('input[name="gl_mode"]:checked');
