@@ -1982,7 +1982,7 @@ connModePrioPSCell : 7
 """)
             else:
                 script.append(f"""set
-FDN : "SubNetwork=ONRM_ROOT_MO,MeContext=xxSiteIDxx,ManagedElement=xxSiteIDxx,GNBCUCPFunction=1,TrafficSteering=1,TrStPSCellProfile=Default,TrStPSCellProfileUeCfg=Base"
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBCUCPFunction=1,TrafficSteering=1,TrStPSCellProfile=Default,TrStPSCellProfileUeCfg=Base"
 hiPrioDetMeasurementTime : 3000
 hiPrioDetStartTime : 5000
 rsrpCandidateA5 : {{threshold2=-104}}
@@ -2565,7 +2565,7 @@ b1ThresholdRsrp : -113
                 if not is_g2:
                     script.append(f"""
 set
-FDN : "SubNetwork=ONRM_ROOT_MO,MeContext=xxSITEIDxx,ManagedElement=xxSITEIDxx,GNBDUFunction=1,NRCellDU={cell}"
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBDUFunction=1,NRCellDU={cell}"
 rimPdschSlotBlankMode : {"AUTO_MODE" if cell in site_n77["NRCellDU"].values else "DISABLED"}
 
 """)
