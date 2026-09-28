@@ -2562,8 +2562,8 @@ b1ThresholdRsrp : -113
                 sa_type = str(r.get("NSA/SA")).strip().upper()
                 bw = r.get("bSChannelBwDL")
 
-				        if not is_g2:
-					          script.append(f"""
+                if not is_g2:
+                    script.append(f"""
 set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext=xxSITEIDxx,ManagedElement=xxSITEIDxx,GNBDUFunction=1,NRCellDU={cell}"
 rimPdschSlotBlankMode : {"AUTO_MODE" if cell in site_n77["NRCellDU"].values else "DISABLED"}
