@@ -1291,25 +1291,26 @@ featureState : DEACTIVATED
 
 """)
 
-            if not has_hb and isidas:
-                state = "ACTIVATED"
+            if resolved_type !=lte:
+              if is_sa and is_vonr:
+                  state = "ACTIVATED"
 
-            elif is_sa and is_vonr:
-                state = "ACTIVATED"
+              if not has_hb and isidas:
+                  state = "ACTIVATED"
 
-            elif is_sa and not is_vonr:
-                state = "DEACTIVATED"
+              if fn_sa and not has_hb and not isidas:
+                  state = "ACTIVATED"
 
-            elif not is_sa:
-                state = "DEACTIVATED"
+              elif (not is_sa) or (is_sa and not is_vonr):
+                  state = "DEACTIVATED"
 
-            else:
-                state = "ACTIVATED"
+              script.append(f"""set
+  FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012713"
+  featureState : {state}
+
+""")
 
             script.append(f"""set
-FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012713"
-featureState : {state}
-
 set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012188"
 featureState : DEACTIVATED
@@ -1339,31 +1340,40 @@ featureState : ACTIVATED
 
 
 """)
-            if ((not is_sa) or (is_sa and (has_n77))):
-                script.append(f"""set
+            if resolved_type != "lte":
+              if is_sa and bw_10Mhz_or_above:
+                  script.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012775"
+featureState : ACTIVATED
+
+""")
+              elif (not is_sa) or (is_sa and bw_below_10Mhz):
+                  script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012775"
 featureState : DEACTIVATED
 
 """)
-            if has_hb or not isidas:
+
+            if (fn_sa and not has_hb and not isidas) or (not has_hb and isidas):
                 script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012659"
 featureState : DEACTIVATED
 
 """)
-            else:
+            elif has_hb or not isidas:
                 script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012659"
 featureState : ACTIVATED
 
-set
+""")
+            if not has_hb:
+                script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBCUCPFunction=1,UeGroupSelection=1,UeServiceGroupDefinition=AIA_B_Premium"
 selectionCriteria : "(rfsp==34||spid==34)&&(5qi==7||qci==7)"
 
 set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},GNBCUCPFunction=1,UeGroupSelection=1,UeServiceGroupDefinition=FN_Turbo"
 selectionCriteria : "(spid==1||spid==2)||(qci==7||5qi==7)||(qci==199||5qi==199)||((qci==9||5qi==9)&&imeitac==35328216)"
-
 
 """)
             if not has_hb and not hicap:
@@ -1593,7 +1603,7 @@ nasInactivityTime : 5
 
 set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012635"
-featureState : DEACTIVATED
+featureState : {'DEACTIVATED' if site_n77.empty else 'ACTIVATED'}
 
 set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,QciTable=default,QciProfilePredefined=default"
