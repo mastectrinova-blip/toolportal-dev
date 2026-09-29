@@ -1305,8 +1305,8 @@ featureState : DEACTIVATED
                     state = "DEACTIVATED"
 
                 script.append(f"""set
-  FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012713"
-  featureState : {state}
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012713"
+featureState : {state}
 
 """)
 
@@ -1357,13 +1357,13 @@ featureState : DEACTIVATED
             if (fn_sa and not has_hb and not isidas) or (not has_hb and isidas):
                 script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012659"
-featureState : DEACTIVATED
+featureState : ACTIVATED
 
 """)
             elif has_hb or not isidas:
                 script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012659"
-featureState : ACTIVATED
+featureState : DEACTIVATED
 
 """)
             if not has_hb:
