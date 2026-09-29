@@ -1341,13 +1341,13 @@ featureState : ACTIVATED
 
 """)
             if resolved_type != "lte":
-              if is_sa and bw_10Mhz_or_above:
+              if is_sa and has_bw_10Mhz_or_above:
                   script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012775"
 featureState : ACTIVATED
 
 """)
-              elif (not is_sa) or (is_sa and bw_below_10Mhz):
+              elif (not is_sa) or (is_sa and has_bw_below_10Mhz):
                   script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012775"
 featureState : DEACTIVATED
