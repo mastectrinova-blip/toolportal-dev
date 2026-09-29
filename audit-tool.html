@@ -1304,7 +1304,7 @@ featureState : DEACTIVATED
                 elif (not is_sa) or (is_sa and not is_vonr):
                     state = "DEACTIVATED"
 
-              script.append(f"""set
+                script.append(f"""set
   FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012713"
   featureState : {state}
 
