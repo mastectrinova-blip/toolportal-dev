@@ -1311,7 +1311,6 @@ featureState : {state}
 """)
 
             script.append(f"""set
-set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012188"
 featureState : DEACTIVATED
 
@@ -2477,7 +2476,7 @@ sleepStartTime : "02:00"
 """)
 
                 if cell in b14_cells or cell in b17_cells:
-                    value = "ON" if cell in primary_upper_on_cells else "OFF"
+                    value = "ON" if lte_anchor else "OFF"
                     script.append(f"""set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell}"
 primaryUpperLayerInd : {value}
