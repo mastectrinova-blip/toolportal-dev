@@ -339,6 +339,29 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
                 </div>
               </div>
             </div>
+            <div class="script-card" id="opt-catm" onclick="toggleScript('catm')">
+              <div class="sc-header">
+                <div class="sc-check" id="cb-catm"></div>
+                <span class="sc-name">CATM Scripts</span>
+              </div>
+              <div class="fga-gen-opts">
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="gen-section" id="catmInputSection" style="display:none">
+        <div class="section-card">
+          <div class="section-title"><span class="step-badge">3</span> Upload CATM Input (.txt)</div>
+          <div class="upload-zone" id="catmZone">
+            <input type="file" id="catmFile" accept=".txt" />
+            <p><strong>Click to upload</strong> or drag &amp; drop</p>
+            <div class="file-badge" id="catmBadge"></div>
+          </div>
+          <div style="margin-top:12px">
+            <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:6px;">Or paste CATM input directly:</label>
+            <textarea id="catmText" rows="8" placeholder="Paste CATM input here..." style="width:100%;padding:10px;background:var(--bg);border:1.5px solid var(--border);border-radius:8px;color:var(--text);font-size:12px;font-family:var(--mono);outline:none;resize:vertical;"></textarea>
           </div>
         </div>
       </div>
@@ -1310,7 +1333,8 @@ featureState : {state}
 
 """)
 
-            script.append(f"""set
+            script.append(f"""
+set
 FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},SystemFunctions=1,Lm=1,FeatureState=CXC4012188"
 featureState : DEACTIVATED
 
@@ -4007,6 +4031,373 @@ def repaired_excel(path):
             except:
                 pass</script>
 
+<!-- CATM Scripts generator (verbatim Python, executed in-browser via Pyodide) -->
+<script id="PY_CATM" type="text/plain">import os
+import pandas as pd
+import re
+
+
+def parse_bw(bandwidth):
+    try:
+        if bandwidth is None:
+            return None
+
+        val = str(bandwidth).strip()
+
+        if val == "" or val.lower() in ["nan", "none", "n/a"]:
+            return None
+
+        # take first part before "/"
+        val = val.split("/")[0].strip()
+
+        return int(float(val))
+
+    except:
+        return None
+
+
+def parse_catm_input(text):
+    """
+    Extract cell, administrativeState and catm1SupportEnabled from the pasted block.
+    Lines outside the table (headers, ===== rows, prompts) are ignored.
+    Returns {cell: {"admin": "UNLOCKED", "catm": True}}
+    """
+    pattern = re.compile(
+        r"^\s*EUtranCellFDD=(\S+)\s+(?:\d+\s+)?\(?([A-Za-z]+)\)?\s+(true|false)\b",
+        re.IGNORECASE,
+    )
+    cells = {}
+    for line in text.splitlines():
+        m = pattern.match(line)
+        if m:
+            cells[m.group(1)] = {
+                "admin": m.group(2).upper(),
+                "catm": m.group(3).lower() == "true",
+            }
+    return cells
+
+def get_sector(cell):
+    """DTL93804_7B_1 -> 'B' (same pattern as the HTML tool's getSec)."""
+    m = re.search(r"_(\d+)([A-Za-z])(?:_|$)", str(cell))
+    return m.group(2).upper() if m else None
+
+
+def cell_priority(band_text, bw):
+    """Lower tuple = higher priority. None = not eligible as a CATM cell."""
+    m = re.search(r"Band\s*(\d+)", str(band_text), re.IGNORECASE)
+    band = int(m.group(1)) if m else 0
+    if band == 17:
+        rank = 0
+    elif band in (2, 4):
+        rank = 1
+    else:
+        return None
+    return (rank, -(parse_bw(bw) or 0), band)   # band as last key: B2 wins ties
+
+def to_int(val):
+    try:
+        return int(float(val))
+    except Exception:
+        return None
+
+    
+def catm_delta_generator(excel_file, node_options):
+
+    all_site_outputs = {}
+
+    # Text from the CATM input box (upload / paste) - available to the logic below
+    catm_input = node_options.get("CATM_INPUT", "")
+
+    # Parsed CATM input: {cell: {"admin": "UNLOCKED", "catm": True}}
+    catm_state = parse_catm_input(catm_input)
+    if catm_input.strip() and not catm_state:
+        raise ValueError("No EUtranCellFDD rows found in the CATM input.")
+
+
+
+
+    # -----------------------------
+    # Helper Functions
+    # -----------------------------
+    def normalize_id(col):
+        return col.apply(lambda x: str(int(x)) if pd.notna(x) else "")
+
+
+    def load_excel():
+        mixed = pd.read_excel(excel_file, sheet_name="Mixed Mode Info")
+        fiveg = pd.read_excel(excel_file, sheet_name="5G Info")
+        lte = pd.read_excel(excel_file, sheet_name="eUtran Parameters")
+        enb = pd.read_excel(excel_file, sheet_name="eNB Info")
+        gnb = pd.read_excel(excel_file, sheet_name="gNB Info")
+
+        for df in [mixed, fiveg, lte, enb, gnb]:
+            df.columns = df.columns.str.strip()
+
+        mixed["eNBId"] = normalize_id(mixed["eNBId"])
+        mixed["gNBId"] = normalize_id(mixed["gNBId"])
+        lte["eNBId"] = normalize_id(lte["eNBId"])
+        fiveg["gNBId"] = normalize_id(fiveg["gNBId"])
+        enb["eNBId"] = normalize_id(enb["eNBId"])
+        gnb["gNBId"] = normalize_id(gnb["gNBId"])
+
+        return mixed, fiveg, lte, enb, gnb
+
+    mixed_df, fiveg_df, lte_df, enb_df, gnb_df = load_excel()
+
+
+
+###    # -----------------------------Delta Here-----------------------------
+
+    def delta_script(siteid):
+        delta_lines = []
+
+        site_cells = site_lte_df["EutranCellFDDId"].tolist()
+        catm_true_cells = [c for c, v in catm_state.items() if v["catm"] and c in site_cells]
+
+        # Eligible replacement cells per sector, best priority first
+        candidates = {}
+        for _, r in site_lte_df.iterrows():
+            cell = r.get("EutranCellFDDId")
+            prio = cell_priority(r.get("eUTRA operating band"), r.get("dlChannelBandwidth"))
+            if prio is None:
+                continue
+            candidates.setdefault(get_sector(cell), []).append((prio, cell))
+
+        # ---- Final CATM cells ----
+        final_catm_cells = set()          # use in loops / if conditions below
+        no_replacement_cells = []         # locked cells with no available cell in their sector
+
+        for c in catm_true_cells:
+            if catm_state[c]["admin"] != "LOCKED":
+                final_catm_cells.add(c)
+                continue
+
+            options = [x for _, x in sorted(candidates.get(get_sector(c), []))
+                       if x != c and catm_state.get(x, {}).get("admin") != "LOCKED"]
+            if options:
+                final_catm_cells.add(options[0])
+            else:
+                no_replacement_cells.append(c)
+
+        for _, r in site_lte_df.iterrows():
+            cell = r.get("EutranCellFDDId")
+            earfcn = to_int(r.get("earfcnDl"))
+            if earfcn is None:
+                continue
+
+            if cell in final_catm_cells:
+                delta_lines.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell}"
+catm1SupportEnabled : true
+eDrxAllowed : true
+eDrxUeType : LTE_CATM
+highestSupportedCeLevelBr : 1
+measGapShareSchemeCeABr : SCHEME_ONE
+prachFreqSharing : true
+dataInactTimerBr : {{dataInactTimerBrCe0=10,dataInactTimerBrCe1=20}}
+mappingInfoCe : {{mappingInfoSIB3=MAPPED_SI_5,mappingInfoSIB4=MAPPED_SI_5}}
+drxActiveBr : CE_LEVEL_0_AND_1
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell},UeMeasControl=1"
+ueMeasurementsActiveBr : true
+
+""")
+            else:
+                delta_lines.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell}"
+catm1SupportEnabled : false
+eDrxAllowed : false
+eDrxUeType : LTE
+highestSupportedCeLevelBr : 0
+measGapShareSchemeCeABr : SCHEME_ZERO
+prachFreqSharing : false
+dataInactTimerBr : {{dataInactTimerBrCe0=0,dataInactTimerBrCe1=0}}
+mappingInfoCe : {{mappingInfoSIB3=NOT_MAPPED,mappingInfoSIB4=NOT_MAPPED}}
+drxActiveBr : CE_LEVEL_0
+
+
+set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell},UeMeasControl=1"
+ueMeasurementsActiveBr : false
+
+""")
+
+
+            ho_allowed = "true" if cell in final_catm_cells else "false"
+
+            # Every other cell on the same earfcnDl at this site
+            for _, o in site_lte_df.iterrows():
+                o_cell = o.get("EutranCellFDDId")
+                if o_cell == cell or to_int(o.get("earfcnDl")) != earfcn:
+                    continue
+
+                delta_lines.append(f"""set
+FDN : "SubNetwork=ONRM_ROOT_MO,MeContext={siteid},ManagedElement={siteid},ENodeBFunction=1,EUtranCellFDD={cell},EUtranFreqRelation={earfcn},EUtranCellRelation={o_cell}"
+isHoAllowedBr : {ho_allowed}
+
+""")
+                
+        return delta_lines
+###   # -----------------------------end-------------------------------------
+
+    # ------------------------------------------------------------------------------------------------
+    # MAIN LOOP
+    # ------------------------------------------------------------------------------------------------
+
+    for _, row in mixed_df.iterrows():
+
+        siteid = row.get("Node to be built as")
+
+        eNBId = row.get("eNBId")
+        gNBId = row.get("gNBId")
+
+        if pd.isna(siteid):
+            continue
+
+        siteid = str(siteid).strip()
+        site_output_lines = []
+
+        # --------------------------------
+        # VALIDATE IDs
+        # --------------------------------
+        eNB_valid = (
+        pd.notna(eNBId)
+        and str(eNBId).strip() != ""
+        and str(eNBId).strip().lower() != "nan"
+        )
+
+        gNB_valid = (
+        pd.notna(gNBId)
+        and str(gNBId).strip() != ""
+        and str(gNBId).strip().lower() != "nan"
+        )
+
+        # --------------------------------
+        # FILTER DATA
+        # --------------------------------
+        if eNB_valid:
+            site_lte_df = lte_df[lte_df["eNBId"] == eNBId]
+        else:
+            site_lte_df = lte_df.iloc[0:0]
+
+        if gNB_valid:
+            site_fg_df = fiveg_df[fiveg_df["gNBId"] == gNBId]
+        else:
+            site_fg_df = fiveg_df.iloc[0:0]
+
+
+        # --------------------------------
+        # n77 PRESENCE
+        # --------------------------------
+
+        site_n77 = site_fg_df[site_fg_df["NRCellDU"].astype(str).str.contains("N077", case=False, na=False)]
+        site_n260 = site_fg_df[site_fg_df["NRCellDU"].astype(str).str.contains("N260", case=False, na=False)]
+        site_non_n77 = site_fg_df[~site_fg_df["NRCellDU"].astype(str).str.contains("N077|N260", case=False, na=False)]
+        has_n77 = not site_n77.empty
+        has_non_n77 = not site_non_n77.empty
+        has_hb = not site_n260.empty
+
+
+        # --------------------------------
+        # ACTUAL NODE PRESENCE
+        # --------------------------------
+        has_lte = not site_lte_df.empty
+
+        has_nr = not site_fg_df.empty
+
+
+        # --------------------------------
+        # cells
+        # --------------------------------
+
+        b2_df = site_lte_df[site_lte_df["eUTRA operating band"].astype(str).str.contains(r"Band\s*2\b", case=False, na=False)]
+        b4_df = site_lte_df[site_lte_df["eUTRA operating band"].astype(str).str.contains(r"Band\s*4\b", case=False, na=False)]
+        b17_df = site_lte_df[site_lte_df["eUTRA operating band"].astype(str).str.contains(r"Band\s*17\b", case=False, na=False)]
+
+        b2_cells = b2_df["EutranCellFDDId"].tolist()
+        b4_cells = b4_df["EutranCellFDDId"].tolist()
+        b17_cells = b17_df["EutranCellFDDId"].tolist()
+
+
+        # --------------------------------
+        # Catm Cells
+        # Band 17 (all cells) > highest-BW Band 2 / Band 4 carrier (Band 2 wins ties)
+        # --------------------------------
+
+        catm_cells = []
+
+        if not b17_df.empty:
+            catm_cells = b17_cells
+
+        else:
+            best_b2 = b2_df.iloc[0:0]
+            best_b4 = b4_df.iloc[0:0]
+
+            if not b2_df.empty:
+                b2_df = b2_df.copy()
+                b2_df["BW"] = b2_df["dlChannelBandwidth"].apply(parse_bw)
+                best_b2 = b2_df[b2_df["BW"] == b2_df["BW"].max()]
+
+            if not b4_df.empty:
+                b4_df = b4_df.copy()
+                b4_df["BW"] = b4_df["dlChannelBandwidth"].apply(parse_bw)
+                best_b4 = b4_df[b4_df["BW"] == b4_df["BW"].max()]
+
+            b2_bw = best_b2["BW"].iloc[0] if not best_b2.empty else -1
+            b4_bw = best_b4["BW"].iloc[0] if not best_b4.empty else -1
+
+            if b2_bw >= b4_bw:
+                catm_cells = best_b2["EutranCellFDDId"].tolist()
+            else:
+                catm_cells = best_b4["EutranCellFDDId"].tolist()
+
+        is_catm_node = len(catm_cells) > 0
+
+
+        # ------------------------------------------------------------------------------------------------
+        # CLASSIFY NODE TYPE
+        # ------------------------------------------------------------------------------------------------
+        if has_lte and has_n77 and has_non_n77:
+            resolved_type = "tmbb"
+
+        elif has_lte and (has_n77 or has_non_n77):
+            resolved_type = "mmbb"
+
+        elif has_nr:
+            resolved_type = "nr"
+
+        elif has_lte:
+            resolved_type = "lte"
+
+        else:
+            resolved_type = "unknown"
+
+        print(siteid, "->", resolved_type)
+
+
+        # ------------------------------------------------------------------------------------------------
+        # GENERATE SCRIPTS
+        # ------------------------------------------------------------------------------------------------
+        if resolved_type == "tmbb":
+            site_output_lines.extend(delta_script(siteid))
+
+        elif resolved_type == "mmbb":
+            site_output_lines.extend(delta_script(siteid))
+
+        elif resolved_type == "lte":
+            site_output_lines.extend(delta_script(siteid))
+
+
+        # ------------------------------------------------------------------------------------------------
+        # STORE OUTPUT
+        # ------------------------------------------------------------------------------------------------
+
+        if site_output_lines:
+            all_site_outputs[siteid] = (f"{siteid}_CATM_script.txt","\n".join(site_output_lines))
+
+    return all_site_outputs</script>
+
 <script>
 // ── ToolPortal SPA back navigation ─────────────────────────────────────────
 // When embedded in the ToolPortal shell (via <iframe>), tell the parent to
@@ -4019,7 +4410,7 @@ function trinovaBackToPortal() {
   }
 }
 
-var sel={fga:false,nds:false};
+var sel={fga:false,nds:false,catm:false};
 var fgaGen='auto';
 
 var breadcrumbs={audit:'Audit Tool',generator:'Audit Tool / Delta Scripts',kgetall:'Audit Tool / KGetAll Comparison Tool',lockunlock:'Audit Tool / Lock & Unlock',manualcmd:'Audit Tool / Manual Cmd',nrarea:'Audit Tool / Processing Tool'};
@@ -4044,6 +4435,9 @@ function showPanel(id, persist){
 function toggleScript(key){
   sel[key]=!sel[key];
   document.getElementById('opt-'+key).classList.toggle('selected',sel[key]);
+  if(key==='catm'){
+    document.getElementById('catmInputSection').style.display=sel.catm?'block':'none';
+  }
 }
 
 var manualBandGroups={LTE:{},'5G':{}};
@@ -4278,6 +4672,24 @@ ciqZone.addEventListener('dragover',function(e){e.preventDefault();ciqZone.class
 ciqZone.addEventListener('dragleave',function(){ciqZone.classList.remove('dragover');});
 ciqZone.addEventListener('drop',function(e){e.preventDefault();ciqZone.classList.remove('dragover');if(e.dataTransfer.files[0]){ciqInput.files=e.dataTransfer.files;ciqInput.dispatchEvent(new Event('change'));}});
 
+// CATM input upload (.txt) — reads the file into the paste textarea
+var catmFileInput=document.getElementById('catmFile');
+var catmZone=document.getElementById('catmZone');
+var catmTextArea=document.getElementById('catmText');
+catmFileInput.addEventListener('change',function(){
+  var f=catmFileInput.files[0];
+  if(f){
+    catmZone.classList.add('has-file');
+    var b=document.getElementById('catmBadge');b.textContent='\u2713 '+f.name;b.style.display='inline-block';
+    var r=new FileReader();
+    r.onload=function(ev){catmTextArea.value=ev.target.result;};
+    r.readAsText(f);
+  }
+});
+catmZone.addEventListener('dragover',function(e){e.preventDefault();catmZone.classList.add('dragover');});
+catmZone.addEventListener('dragleave',function(){catmZone.classList.remove('dragover');});
+catmZone.addEventListener('drop',function(e){e.preventDefault();catmZone.classList.remove('dragover');if(e.dataTransfer.files[0]){catmFileInput.files=e.dataTransfer.files;catmFileInput.dispatchEvent(new Event('change'));}});
+
 // Per-Node Band Flags (auto-detected from "Mixed Mode Info")
 function loadNodeBands(f){
   if(!f)return;
@@ -4419,12 +4831,14 @@ function ensurePyodide(){
     var cmeditSrc = document.getElementById('cmedit').textContent;
     var repairSrc = document.getElementById('PY_EXCEL_REPAIR').textContent;
     var globalLocalSrc = document.getElementById('PY_GLOBAL_LOCAL').textContent; // NEW
+    var catmSrc = document.getElementById('PY_CATM').textContent; // NEW
     
     // Write the Python code to Pyodide's virtual file system
     pyodide.FS.writeFile('/excel_repair.py', repairSrc);
     pyodide.FS.writeFile('/NDS_con.py', pySrc);
     pyodide.FS.writeFile('/cmedit.py', cmeditSrc);
     pyodide.FS.writeFile('/global_local.py', globalLocalSrc); // NEW
+    pyodide.FS.writeFile('/catm_logic.py', catmSrc); // NEW
     
     // Import the functions so they are ready to use
     await pyodide.runPythonAsync(
@@ -4432,7 +4846,8 @@ function ensurePyodide(){
       'if "/" not in sys.path: sys.path.insert(0, "/")\n' +
       'from NDS_con import NDS_delta_generator\n' +
       'from cmedit import cmedit_generator\n' +
-      'from global_local import run_global_local_search\n' // NEW
+      'from global_local import run_global_local_search\n' + // NEW
+      'from catm_logic import catm_delta_generator\n' // NEW
     );
     
     return pyodide;
@@ -4445,7 +4860,8 @@ async function generate(){
   document.getElementById('dlSection').innerHTML='';
   genOutputs = {};
   if(!ciqInput.files[0]){alert('Please upload a CIQ Excel file');return;}
-  if(!sel.fga&&!sel.nds){alert('Please select at least one script');return;}
+  if(!sel.fga&&!sel.nds&&!sel.catm){alert('Please select at least one script');return;}
+  if(sel.catm&&!catmTextArea.value.trim()){alert('Please upload or paste the CATM input.');return;}
   btn.disabled=true;sp.style.display='block';bt.textContent='Processing...';
   try {
     var ab=await ciqInput.files[0].arrayBuffer();
@@ -4667,6 +5083,28 @@ async function generate(){
 		 await addDl(cpair[1], cpair[0], 'cmedit Commands ('+cmeditKeys[ci]+')');
 	 }
  }
+
+    // CATM SCRIPTS (runs catm_logic.py, unmodified, via Pyodide)
+    if(sel.catm){
+      bt.textContent='Loading CATM engine...';
+      var pyodide=await ensurePyodide();
+      bt.textContent='Running CATM Scripts...';
+      pyodide.FS.writeFile('/ciq_input.xlsx', new Uint8Array(ab));
+      var catmNodeOptions={CATM_INPUT:catmTextArea.value};
+      pyodide.globals.set('excel_path_js','/ciq_input.xlsx');
+      pyodide.globals.set('node_options_js', pyodide.toPy(catmNodeOptions));
+      var catmResultProxy=await pyodide.runPythonAsync('catm_delta_generator(excel_path_js, node_options_js)');
+      var catmResultObj=catmResultProxy.toJs({dict_converter: Object.fromEntries});
+      catmResultProxy.destroy();
+      var catmSiteKeys=Object.keys(catmResultObj);
+      if(!catmSiteKeys.length){
+        alert('CATM Scripts: no output was generated for this CIQ (check that the site qualifies under the current rules).');
+      }
+      for(var csi=0;csi<catmSiteKeys.length;csi++){
+        var catmPair=catmResultObj[catmSiteKeys[csi]]; // [filename, content]
+        await addDl(catmPair[1], catmPair[0], 'CATM Script ('+catmSiteKeys[csi]+')');
+      }
+    }
 
 
     document.getElementById('dlSection').innerHTML='';
